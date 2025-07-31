@@ -44,7 +44,7 @@ def extract_form_data(tally_data):
         
         # Kişisel bilgiler - Çok dilli
         'name': get_field_value('Adınız Soyadınız', 'Full Name'),
-        'email': get_field_value('E-mail Adresiniz', 'Email Address'), 
+        'email': get_field_value('Mail Adresiniz', 'Email Address') or get_field_value('E-mail Adresiniz', 'Email Address'), 
         'phone': get_field_value('Telefon Numaranız', 'Phone Number'),
         
         # Kategori belirleme alanları - Çok dilli destek
