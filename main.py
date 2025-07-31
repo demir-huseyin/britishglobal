@@ -1,55 +1,56 @@
 from flask import Flask, request, jsonify
-import requests
-import os
-from dotenv import load_dotenv
-load_dotenv()
+import json
+from datetime import datetime
 
 app = Flask(__name__)
 
-HUBSPOT_API_KEY = os.environ.get("HUBSPOT_API_KEY")
-
-
 @app.route("/tally", methods=["POST"])
 def tally_webhook():
-    data = request.json
-    print("Gelen Tally verisi:", data)
-
-    # Tally formundaki alan isimlerine göre güncelle
-    email = data.get("data", {}).get("email")
-    firstname = data.get("data", {}).get("firstname", "")
-    lastname = data.get("data", {}).get("lastname", "")
-
-    if not email:
-        return jsonify({"error": "Email bulunamadı"}), 400
-
-    # HubSpot API çağrısı
-    headers = {
-        "Authorization": f"Bearer {HUBSPOT_API_KEY}",
-        "Content-Type": "application/json"
-    }
-
-    payload = {
-        "properties": {
-            "email": email,
-            "firstname": firstname,
-            "lastname": lastname
-        }
-    }
-
-    hubspot_response = requests.post(
-        "https://api.hubapi.com/crm/v3/objects/contacts",
-        headers=headers,
-        json=payload
-    )
-
-    if hubspot_response.status_code in [200, 201]:
-        return jsonify({"message": "Başarıyla HubSpot'a gönderildi"}), 200
-    else:
-        return jsonify({"error": "HubSpot API hatası", "details": hubspot_response.text}), 500
+    """Tally webhook endpoint - Adım 1: Sadece veriyi al ve yazdır"""
+    try:
+        # Gelen veriyi al
+        data = request.json
+        
+        # Console'a yazdır (Cloud Run logs'da görünür)
+        print("=" * 50)
+        print(f"YENİ WEBHOOK - {datetime.now()}")
+        print("Gelen veri:")
+        print(json.dumps(data, indent=2, ensure_ascii=False))
+        print("=" * 50)
+        
+        # Temel alanları kontrol et
+        if not data:
+            return jsonify({"error": "Veri bulunamadı"}), 400
+            
+        # Başarılı response
+        return jsonify({
+            "status": "success",
+            "message": "Webhook alındı",
+            "timestamp": datetime.now().isoformat()
+        }), 200
+        
+    except Exception as e:
+        print(f"HATA: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/", methods=["GET"])
-def hello():
-    return "Tally webhook listener aktif!"
+def health_check():
+    """Sağlık kontrolü"""
+    return jsonify({
+        "status": "OK",
+        "service": "British Global Webhook",
+        "version": "1.0 - Adım 1",
+        "timestamp": datetime.now().isoformat()
+    })
+
+@app.route("/test", methods=["POST"])
+def test_endpoint():
+    """Test için endpoint"""
+    return jsonify({
+        "message": "Test başarılı!",
+        "received": request.json,
+        "timestamp": datetime.now().isoformat()
+    })
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
