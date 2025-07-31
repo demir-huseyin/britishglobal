@@ -122,10 +122,17 @@ def get_contact_info(extracted_data):
     email = extracted_data.get('email', '')
     phone = extracted_data.get('phone', '')
     
-    # Name'i firstname/lastname'e böl - DÜZELTME
-    name_parts = name.split(' ')  # ← DEĞIŞEN KISIM
+    # Name'i firstname/lastname'e böl
+    name_parts = name.split(' ')
     firstname = name_parts[0] if name_parts else ''
-    lastname = ' '.join(name_parts[1:]) if len(name_parts) > 1 else ''  # ← DEĞIŞEN KISIM
+    lastname = ' '.join(name_parts[1:]) if len(name_parts) > 1 else ''
+    
+    return {
+        'firstname': firstname,
+        'lastname': lastname,
+        'email': email,
+        'phone': phone
+    }
 
 def get_education_details(extracted_data):
     """Eğitim detaylarını topla"""
@@ -211,7 +218,7 @@ def save_to_hubspot(contact_info, category, extracted_data):
         "email": contact_info['email'],
         "firstname": contact_info['firstname'] or "Bilinmiyor",
         "lastname": contact_info['lastname'] or "Bilinmiyor", 
-        "phone": contact_info['phone'],  # phone field doğru
+        "phone": contact_info['phone'],
         "lifecyclestage": "lead",
         "hs_lead_status": "NEW",
         "jobtitle": f"{category.title()} Başvurusu"
@@ -224,7 +231,7 @@ def save_to_hubspot(contact_info, category, extracted_data):
         properties["company"] = f"British Global - {category.title()}"
     
     # Debug
-    print(f"📋 HubSpot Properties (DÜZELTME):")
+    print(f"📋 HubSpot Properties:")
     for key, value in properties.items():
         print(f"  {key}: {value}")
     
@@ -267,25 +274,32 @@ def create_hubspot_note(contact_id, category, extracted_data):
     note_body += f"📅 Başvuru: {datetime.now().strftime('%d/%m/%Y %H:%M')}\n\n"
     
     if category == 'education':
-        if extracted_data.get('doktora'):
-            note_body += "🎓 Program: Doktora (PhD programları)\n"
-        elif extracted_data.get('master'):
-            note_body += "🎓 Program: Yüksek Lisans (Master)\n"
-        elif extracted_data.get('lisans'):
-            note_body += "🎓 Program: Lisans (Üniversite)\n"
-        
-        if extracted_data.get('not_ortalama'):
-            note_body += f"📊 Not Ortalaması: {extracted_data.get('not_ortalama')}\n"
-        if extracted_data.get('butce'):
-            note_body += f"💰 Bütçe: £{extracted_data.get('butce'):,}\n"
+        education_details = get_education_details(extracted_data)
+        note_body += "🎓 EĞİTİM DANIŞMANLIĞI\n"
+        if education_details['education_programs']:
+            note_body += f"📚 İlgilenilen Programlar: {education_details['education_programs']}\n"
+        if education_details['gpa']:
+            note_body += f"📊 Not Ortalaması: {education_details['gpa']}\n"
+        if education_details['budget']:
+            note_body += f"💰 Bütçe: £{education_details['budget']}\n"
     
     elif category == 'legal':
+        legal_details = get_legal_details(extracted_data)
         note_body += "⚖️ HUKUK DANIŞMANLIĞI\n"
-        # Hukuk detayları...
+        if legal_details['legal_services']:
+            note_body += f"📋 Hukuki Hizmetler: {legal_details['legal_services']}\n"
+        if legal_details['legal_topic']:
+            note_body += f"📝 Konu: {legal_details['legal_topic']}\n"
     
     elif category == 'business':
+        business_details = get_business_details(extracted_data)
         note_body += "💼 TİCARİ DANIŞMANLIK\n"
-        # Business detayları...
+        if business_details['company_name']:
+            note_body += f"🏢 Şirket: {business_details['company_name']}\n"
+        if business_details['sector']:
+            note_body += f"🏭 Sektör: {business_details['sector']}\n"
+        if business_details['sector_details']:
+            note_body += f"📈 Sektör Detayları: {business_details['sector_details']}\n"
     
     # Note API call
     note_url = "https://api.hubapi.com/crm/v3/objects/notes"
@@ -407,7 +421,7 @@ def test_endpoint():
         
         # HubSpot'a test kaydı gönder (email kontrolü ile)
         hubspot_result = {"message": "Email bulunamadı, HubSpot'a gönderilmedi"}
-        if contact and contact.get('email'):  # ← DÜZELTME
+        if contact and contact.get('email'):
             hubspot_result = save_to_hubspot(contact, category, extracted)
         
         return jsonify({
