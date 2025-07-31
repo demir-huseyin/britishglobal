@@ -217,41 +217,42 @@ def save_to_hubspot(contact_info, category, extracted_data):
         "Content-Type": "application/json"
     }
     
-    # Base properties
+    # Base properties - sadece standart HubSpot fields
     properties = {
         "email": contact_info['email'],
         "firstname": contact_info['firstname'],
         "lastname": contact_info['lastname'],
         "phone": contact_info['phone'],
         "lifecyclestage": "lead",
-        "lead_source": "Tally Form - British Global"
+        "hs_lead_status": "NEW"
     }
     
-    # Kategori bazlı ek bilgiler
+    # Kategori bazlı ek bilgiler - notes alanına yazalım
+    notes = f"British Global - Kategori: {category.title()}\n"
+    
     if category == 'education':
         edu_details = get_education_details(extracted_data)
-        properties.update({
-            "service_category": "Eğitim",
-            "education_programs": edu_details['education_programs'],
-            "hs_lead_status": "NEW"
-        })
+        notes += f"Eğitim Programları: {edu_details['education_programs']}\n"
+        notes += f"Not Ortalaması: {edu_details['gpa']}\n"
+        notes += f"Bütçe: {edu_details['budget']}\n"
+        properties["jobtitle"] = "Eğitim Başvurusu"
     
     elif category == 'legal':
         legal_details = get_legal_details(extracted_data)
-        properties.update({
-            "service_category": "Hukuk", 
-            "legal_services": legal_details['legal_services'],
-            "hs_lead_status": "NEW"
-        })
+        notes += f"Hukuk Hizmetleri: {legal_details['legal_services']}\n"
+        notes += f"Konu: {legal_details['legal_topic']}\n"
+        properties["jobtitle"] = "Hukuk Danışmanlığı"
     
     elif category == 'business':
         business_details = get_business_details(extracted_data)
-        properties.update({
-            "service_category": "Ticari",
-            "company": business_details['company_name'],
-            "industry": business_details['sector'],
-            "hs_lead_status": "NEW"
-        })
+        notes += f"Şirket: {business_details['company_name']}\n"
+        notes += f"Sektör: {business_details['sector']}\n"
+        notes += f"Detaylar: {business_details['sector_details']}\n"
+        properties["company"] = business_details['company_name']
+        properties["jobtitle"] = "Ticari Danışmanlık"
+    
+    # Notes alanını ekle
+    properties["hs_content_membership_notes"] = notes
     
     # Request payload
     payload = {
@@ -288,7 +289,8 @@ def save_to_hubspot(contact_info, category, extracted_data):
     except Exception as e:
         print(f"❌ HubSpot kayıt hatası: {str(e)}")
         return {"success": False, "error": str(e)}
-
+    
+    
 @app.route("/tally", methods=["POST"])
 def tally_webhook():
     """Tally webhook endpoint - Adım 3: HubSpot entegrasyonu ile"""
