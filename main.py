@@ -202,92 +202,106 @@ def get_business_details(extracted_data):
     }
 
 def save_to_hubspot(contact_info, category, extracted_data):
-    """HubSpot'a contact kaydet"""
+    """HubSpot'a contact kaydet - İyileştirilmiş version"""
     
     if not HUBSPOT_API_KEY:
-        print("⚠️ HubSpot API Key bulunamadı - Environment variable set edilmedi")
+        print("⚠️ HubSpot API Key bulunamadı")
         return {"success": False, "error": "API Key bulunamadı"}
     
-    # HubSpot API endpoint
     url = "https://api.hubapi.com/crm/v3/objects/contacts"
-    
-    # Headers
     headers = {
         "Authorization": f"Bearer {HUBSPOT_API_KEY}",
         "Content-Type": "application/json"
     }
     
-    # Base properties - sadece standart HubSpot fields
+    # İsim düzeltmesi
+    firstname = contact_info['firstname'] or "Bilinmiyor"
+    lastname = contact_info['lastname'] or "Bilinmiyor"
+    
+    # Base properties
     properties = {
         "email": contact_info['email'],
-        "firstname": contact_info['firstname'],
-        "lastname": contact_info['lastname'],
+        "firstname": firstname,
+        "lastname": lastname,
         "phone": contact_info['phone'],
         "lifecyclestage": "lead",
         "hs_lead_status": "NEW"
     }
     
-    # Kategori bazlı ek bilgiler - notes alanına yazalım
-    notes = f"British Global - Kategori: {category.title()}\n"
+    # Detaylı notes oluştur
+    notes = f"🎯 BRITISH GLOBAL - {category.upper()}\n"
+    notes += f"📅 Başvuru: {datetime.now().strftime('%d/%m/%Y %H:%M')}\n"
+    notes += f"📧 Email: {contact_info['email']}\n"
+    notes += f"📱 Telefon: {contact_info['phone']}\n\n"
     
     if category == 'education':
         edu_details = get_education_details(extracted_data)
-        notes += f"Eğitim Programları: {edu_details['education_programs']}\n"
-        notes += f"Not Ortalaması: {edu_details['gpa']}\n"
-        notes += f"Bütçe: {edu_details['budget']}\n"
+        notes += "🎓 EĞİTİM BİLGİLERİ:\n"
+        if extracted_data.get('lisans'):
+            notes += "• Program: Lisans (Üniversite eğitimi)\n"
+        if extracted_data.get('master'):
+            notes += "• Program: Yüksek Lisans\n"
+        if extracted_data.get('not_ortalama'):
+            notes += f"• Not Ortalaması: {extracted_data.get('not_ortalama')}\n"
+        if extracted_data.get('butce'):
+            notes += f"• Bütçe: £{extracted_data.get('butce'):,}\n"
+        
         properties["jobtitle"] = "Eğitim Başvurusu"
+        properties["company"] = "British Global - Eğitim"
     
     elif category == 'legal':
         legal_details = get_legal_details(extracted_data)
-        notes += f"Hukuk Hizmetleri: {legal_details['legal_services']}\n"
-        notes += f"Konu: {legal_details['legal_topic']}\n"
+        notes += "⚖️ HUKUK BİLGİLERİ:\n"
+        notes += f"• Hizmetler: {legal_details['legal_services']}\n"
+        if legal_details['legal_topic']:
+            notes += f"• Konu: {legal_details['legal_topic']}\n"
+        
         properties["jobtitle"] = "Hukuk Danışmanlığı"
+        properties["company"] = "British Global - Hukuk"
     
     elif category == 'business':
         business_details = get_business_details(extracted_data)
-        notes += f"Şirket: {business_details['company_name']}\n"
-        notes += f"Sektör: {business_details['sector']}\n"
-        notes += f"Detaylar: {business_details['sector_details']}\n"
-        properties["company"] = business_details['company_name']
+        notes += "💼 TİCARİ BİLGİLER:\n"
+        if business_details['company_name']:
+            notes += f"• Şirket: {business_details['company_name']}\n"
+        if business_details['sector']:
+            notes += f"• Sektör: {business_details['sector']}\n"
+        
         properties["jobtitle"] = "Ticari Danışmanlık"
+        if business_details['company_name']:
+            properties["company"] = business_details['company_name']
     
-    # Notes alanını ekle
+    # Notes'u farklı alana koy
     properties["hs_content_membership_notes"] = notes
     
-    # Request payload
-    payload = {
-        "properties": properties
-    }
+    # Debug output
+    print(f"📋 HubSpot Properties:")
+    for key, value in properties.items():
+        print(f"  {key}: {value}")
+    
+    payload = {"properties": properties}
     
     try:
-        print(f"🔄 HubSpot'a gönderiliyor: {contact_info['email']}")
-        print(f"Properties: {json.dumps(properties, indent=2, ensure_ascii=False)}")
-        
         response = requests.post(url, headers=headers, json=payload)
         
         if response.status_code in [200, 201]:
             result = response.json()
             contact_id = result.get('id')
             print(f"✅ HubSpot'a kaydedildi - Contact ID: {contact_id}")
-            
             return {
                 "success": True,
                 "contact_id": contact_id,
                 "properties_sent": properties
             }
-        
         else:
-            error_msg = response.text
-            print(f"❌ HubSpot API hatası: {response.status_code} - {error_msg}")
-            
+            print(f"❌ HubSpot hatası: {response.status_code} - {response.text}")
             return {
                 "success": False,
-                "error": error_msg,
+                "error": response.text,
                 "status_code": response.status_code
             }
-    
     except Exception as e:
-        print(f"❌ HubSpot kayıt hatası: {str(e)}")
+        print(f"❌ Hata: {str(e)}")
         return {"success": False, "error": str(e)}
 
 @app.route("/tally", methods=["POST"])
