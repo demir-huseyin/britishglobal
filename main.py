@@ -12,70 +12,75 @@ HUBSPOT_API_KEY = os.environ.get('HUBSPOT_API_KEY', '')
 def extract_form_data(tally_data):
     """Tally webhook verisinden form alanlarını çıkar"""
     
-    # Tally webhook structure - genelde 'data' içinde form fields
-    form_data = tally_data.get('data', {})
+    # Gerçek Tally webhook formatı - fields array'i kullanıyor
+    form_fields = tally_data.get('data', {}).get('fields', [])
     
-    # Temel bilgiler - CSV'den gördüğümüz alan isimleri
+    # Fields'i label'a göre dictionary'e çevir
+    field_dict = {}
+    for field in form_fields:
+        label = field.get('label', '')
+        value = field.get('value')
+        field_dict[label] = value
+    
+    print(f"🔍 Tally fields: {len(form_fields)} adet")
+    print(f"📋 Field labels: {list(field_dict.keys())}")
+    
+    # Temel bilgiler
     extracted = {
-        'submission_id': form_data.get('responseId', ''),
-        'submitted_at': form_data.get('createdAt', ''),
+        'submission_id': tally_data.get('data', {}).get('responseId', ''),
+        'submitted_at': tally_data.get('createdAt', ''),
         
-        # Kişisel bilgiler - Tally'den gelen field names
-        'name': form_data.get('name', ''),  # Tally formdaki alan adı
-        'email': form_data.get('email', ''),
-        'phone': form_data.get('phone', ''),
+        # Kişisel bilgiler - Tally field labels'a göre
+        'name': field_dict.get('Adınız Soyadınız', ''),
+        'email': field_dict.get('E-mail Adresiniz', ''),
+        'phone': field_dict.get('Telefon Numaranız', ''),
         
-        # CSV'deki gerçek alan isimleri için de kontrol
-        'name_csv': form_data.get('Adınız Soyadınız', ''),
-        'email_csv': form_data.get('E-mail Adresiniz', ''),
-        'phone_csv': form_data.get('Telefon Numaranız', ''),
-        
-        # Kategori belirleme alanları (Boolean değerler)
-        'ticari': form_data.get('Hangi Konuda Danışmanlık Almak İstiyorsunuz? (Ticari Danışmanlık)', False),
-        'egitim': form_data.get('Hangi Konuda Danışmanlık Almak İstiyorsunuz? (Eğitim Danışmanlığı)', False),
-        'hukuk': form_data.get('Hangi Konuda Danışmanlık Almak İstiyorsunuz? (Vize ve Hukuki Danışmanlık)', False),
+        # Kategori belirleme alanları
+        'ticari': field_dict.get('Hangi Konuda Danışmanlık Almak İstiyorsunuz? (Ticari Danışmanlık)', False),
+        'egitim': field_dict.get('Hangi Konuda Danışmanlık Almak İstiyorsunuz? (Eğitim Danışmanlığı)', False),
+        'hukuk': field_dict.get('Hangi Konuda Danışmanlık Almak İstiyorsunuz? (Vize ve Hukuki Danışmanlık)', False),
         
         # Eğitim alanları
-        'egitim_seviye': form_data.get('İlgilendiğiniz Eğitim Seviyesi', ''),
-        'lise': form_data.get('İlgilendiğiniz Eğitim Seviyesi (Lise (İngiltere\'de lise eğitimi almak isteyenler için))', ''),
-        'lisans': form_data.get('İlgilendiğiniz Eğitim Seviyesi (Lisans (Üniversite eğitimi))', ''),
-        'master': form_data.get('İlgilendiğiniz Eğitim Seviyesi (Yüksek Lisans (Master programları))', ''),
-        'doktora': form_data.get('İlgilendiğiniz Eğitim Seviyesi (Doktora (Phd programları))', ''),
-        'dil_okulu': form_data.get('İlgilendiğiniz Eğitim Seviyesi (Dil Okulları (Yetişkinler için genel, IELTS veya mesleki İngilizce) )', ''),
-        'yaz_kampi': form_data.get('İlgilendiğiniz Eğitim Seviyesi (Yaz Kampı (12-18 yaş grubu))', ''),
-        'not_ortalama': form_data.get('Not Ortalamanız', ''),
-        'butce': form_data.get('Eğitim ve Konaklama için Düşündüğünüz Bütçe Nedir? (£)', ''),
+        'egitim_seviye': field_dict.get('İlgilendiğiniz Eğitim Seviyesi', ''),
+        'lise': field_dict.get('İlgilendiğiniz Eğitim Seviyesi (Lise (İngiltere\'de lise eğitimi almak isteyenler için))', False),
+        'lisans': field_dict.get('İlgilendiğiniz Eğitim Seviyesi (Lisans (Üniversite eğitimi))', False),
+        'master': field_dict.get('İlgilendiğiniz Eğitim Seviyesi (Yüksek Lisans (Master programları))', False),
+        'doktora': field_dict.get('İlgilendiğiniz Eğitim Seviyesi (Doktora (Phd programları))', False),
+        'dil_okulu': field_dict.get('İlgilendiğiniz Eğitim Seviyesi (Dil Okulları (Yetişkinler için genel, IELTS veya mesleki İngilizce) )', False),
+        'yaz_kampi': field_dict.get('İlgilendiğiniz Eğitim Seviyesi (Yaz Kampı (12-18 yaş grubu))', False),
+        'not_ortalama': field_dict.get('Not Ortalamanız', ''),
+        'butce': field_dict.get('Eğitim ve Konaklama için Düşündüğünüz Bütçe Nedir? (£)', ''),
         
         # Hukuk alanları
-        'hukuk_konu': form_data.get('Hangi konularda hukuki destek almak istiyorsunuz?', ''),
-        'turistik_vize': form_data.get('Hangi konularda hukuki destek almak istiyorsunuz? (İngiltere Turistik Vize (Visitor Visa))', ''),
-        'ogrenci_vize': form_data.get('Hangi konularda hukuki destek almak istiyorsunuz? (İngiltere Öğrenci Vizesi (Tier 4 / Graduate Route))', ''),
-        'calisma_vize': form_data.get('Hangi konularda hukuki destek almak istiyorsunuz? (İngiltere Çalışma Vizesi (Skilled Worker, Health and Care vb.))', ''),
-        'aile_vize': form_data.get('Hangi konularda hukuki destek almak istiyorsunuz? (İngiltere Aile Birleşimi / Partner Vizesi)', ''),
-        'ilr': form_data.get('Hangi konularda hukuki destek almak istiyorsunuz? (İngiltere\'de Süresiz Oturum (ILR) Başvurusu)', ''),
-        'vatandaslik': form_data.get('Hangi konularda hukuki destek almak istiyorsunuz? (İngiltere Vatandaşlık Başvurusu)', ''),
-        'vize_red': form_data.get('Hangi konularda hukuki destek almak istiyorsunuz? (Vize Reddi İtiraz ve Yeniden Başvuru Danışmanlığı)', ''),
+        'hukuk_konu': field_dict.get('Hangi konularda hukuki destek almak istiyorsunuz?', ''),
+        'turistik_vize': field_dict.get('Hangi konularda hukuki destek almak istiyorsunuz? (İngiltere Turistik Vize (Visitor Visa))', False),
+        'ogrenci_vize': field_dict.get('Hangi konularda hukuki destek almak istiyorsunuz? (İngiltere Öğrenci Vizesi (Tier 4 / Graduate Route))', False),
+        'calisma_vize': field_dict.get('Hangi konularda hukuki destek almak istiyorsunuz? (İngiltere Çalışma Vizesi (Skilled Worker, Health and Care vb.))', False),
+        'aile_vize': field_dict.get('Hangi konularda hukuki destek almak istiyorsunuz? (İngiltere Aile Birleşimi / Partner Vizesi)', False),
+        'ilr': field_dict.get('Hangi konularda hukuki destek almak istiyorsunuz? (İngiltere\'de Süresiz Oturum (ILR) Başvurusu)', False),
+        'vatandaslik': field_dict.get('Hangi konularda hukuki destek almak istiyorsunuz? (İngiltere Vatandaşlık Başvurusu)', False),
+        'vize_red': field_dict.get('Hangi konularda hukuki destek almak istiyorsunuz? (Vize Reddi İtiraz ve Yeniden Başvuru Danışmanlığı)', False),
         
         # Ticari alanları
-        'sirket_adi': form_data.get('Şirketinizin Adı', ''),
-        'sektor': form_data.get('Sektörünüz', ''),
+        'sirket_adi': field_dict.get('Şirketinizin Adı', ''),
+        'sektor': field_dict.get('Sektörünüz', ''),
         
         # Sektör detayları
-        'ambalaj': form_data.get('Sektörünüz (Ambalaj ve Baskı Ürünleri)', ''),
-        'tekstil': form_data.get('Sektörünüz (Tekstil ve Giyim)', ''),
-        'ayakkabi': form_data.get('Sektörünüz (Ayakkabı ve Deri Ürünleri)', ''),
-        'mobilya': form_data.get('Sektörünüz (Mobilya ve Ev Dekorasyonu)', ''),
-        'gida': form_data.get('Sektörünüz (Gıda Ürünleri / Yiyecek-İçecek)', ''),
-        'taki': form_data.get('Sektörünüz (Takı, Bijuteri ve Aksesuar)', ''),
-        'hediye': form_data.get('Sektörünüz (Hediyelik Eşya)', ''),
-        'kozmetik': form_data.get('Sektörünüz (Kozmetik ve Kişisel Bakım)', ''),
-        'oyuncak': form_data.get('Sektörünüz (Oyuncak ve Kırtasiye)', ''),
-        'temizlik': form_data.get('Sektörünüz (Temizlik ve Hijyen Ürünleri)', ''),
-        'ev_gereci': form_data.get('Sektörünüz (Ev Gereçleri ve Mutfak Ürünleri)', ''),
-        'hirdavat': form_data.get('Sektörünüz (Hırdavat / Yapı Malzemeleri)', ''),
-        'otomotiv': form_data.get('Sektörünüz (Otomotiv Yan Sanayi)', ''),
-        'bahce': form_data.get('Sektörünüz (Bahçe ve Outdoor Ürünleri)', ''),
-        'diger_sektor': form_data.get('Sektörünüz (Diğer)', '')
+        'ambalaj': field_dict.get('Sektörünüz (Ambalaj ve Baskı Ürünleri)', False),
+        'tekstil': field_dict.get('Sektörünüz (Tekstil ve Giyim)', False),
+        'ayakkabi': field_dict.get('Sektörünüz (Ayakkabı ve Deri Ürünleri)', False),
+        'mobilya': field_dict.get('Sektörünüz (Mobilya ve Ev Dekorasyonu)', False),
+        'gida': field_dict.get('Sektörünüz (Gıda Ürünleri / Yiyecek-İçecek)', False),
+        'taki': field_dict.get('Sektörünüz (Takı, Bijuteri ve Aksesuar)', False),
+        'hediye': field_dict.get('Sektörünüz (Hediyelik Eşya)', False),
+        'kozmetik': field_dict.get('Sektörünüz (Kozmetik ve Kişisel Bakım)', False),
+        'oyuncak': field_dict.get('Sektörünüz (Oyuncak ve Kırtasiye)', False),
+        'temizlik': field_dict.get('Sektörünüz (Temizlik ve Hijyen Ürünleri)', False),
+        'ev_gereci': field_dict.get('Sektörünüz (Ev Gereçleri ve Mutfak Ürünleri)', False),
+        'hirdavat': field_dict.get('Sektörünüz (Hırdavat / Yapı Malzemeleri)', False),
+        'otomotiv': field_dict.get('Sektörünüz (Otomotiv Yan Sanayi)', False),
+        'bahce': field_dict.get('Sektörünüz (Bahçe ve Outdoor Ürünleri)', False),
+        'diger_sektor': field_dict.get('Sektörünüz (Diğer)', False)
     }
     
     return extracted
@@ -113,14 +118,9 @@ def determine_category(extracted_data):
 def get_contact_info(extracted_data):
     """En güncel iletişim bilgilerini al"""
     
-    # Name: Tally field varsa onu, yoksa CSV field'ı kullan
-    name = extracted_data.get('name') or extracted_data.get('name_csv', '')
-    
-    # Email: aynı mantık
-    email = extracted_data.get('email') or extracted_data.get('email_csv', '')
-    
-    # Phone: aynı mantık
-    phone = extracted_data.get('phone') or extracted_data.get('phone_csv', '')
+    name = extracted_data.get('name', '')
+    email = extracted_data.get('email', '')
+    phone = extracted_data.get('phone', '')
     
     # Name'i firstname/lastname'e böl
     name_parts = name.split(' ', 1) if name else ['', '']
@@ -142,9 +142,9 @@ def get_education_details(extracted_data):
     if extracted_data.get('lise'):
         education_levels.append('Lise')
     if extracted_data.get('lisans'):
-        education_levels.append(f"Lisans: {extracted_data.get('lisans')}")
+        education_levels.append('Lisans')
     if extracted_data.get('master'):
-        education_levels.append(f"Master: {extracted_data.get('master')}")
+        education_levels.append('Master')
     if extracted_data.get('doktora'):
         education_levels.append('Doktora')
     if extracted_data.get('dil_okulu'):
@@ -289,11 +289,10 @@ def save_to_hubspot(contact_info, category, extracted_data):
     except Exception as e:
         print(f"❌ HubSpot kayıt hatası: {str(e)}")
         return {"success": False, "error": str(e)}
-    
-    
+
 @app.route("/tally", methods=["POST"])
 def tally_webhook():
-    """Tally webhook endpoint - Adım 3: HubSpot entegrasyonu ile"""
+    """Tally webhook endpoint - Güncellenmiş Tally format desteği ile"""
     try:
         # Gelen veriyi al
         data = request.json
@@ -348,14 +347,14 @@ def health_check():
     return jsonify({
         "status": "OK",
         "service": "British Global Webhook",
-        "version": "3.0 - Adım 3: HubSpot Integration",
+        "version": "4.0 - Tally Format Fix",
         "hubspot_api": hubspot_status,
         "timestamp": datetime.now().isoformat()
     })
 
 @app.route("/test", methods=["POST"])
 def test_endpoint():
-    """Test için endpoint - HubSpot entegrasyonu ile"""
+    """Test için endpoint - Hem eski hem yeni format desteği"""
     data = request.json
     
     # Test verisi ile form mapping dene
