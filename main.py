@@ -392,28 +392,40 @@ def health_check():
 
 @app.route("/test", methods=["POST"])
 def test_endpoint():
-    """Test için endpoint - Hem eski hem yeni format desteği"""
+    """Test için endpoint - Error handling ile"""
     data = request.json
     
-    # Test verisi ile form mapping dene
-    extracted = extract_form_data(data)
-    category = determine_category(extracted)
-    contact = get_contact_info(extracted)
-    
-    # HubSpot'a test kaydı gönder (eğer email varsa)
-    hubspot_result = {"message": "Email bulunamadı, HubSpot'a gönderilmedi"}
-    if contact['email']:
-        hubspot_result = save_to_hubspot(contact, category, extracted)
-    
-    return jsonify({
-        "message": "Test başarılı!",
-        "received": data,
-        "extracted": extracted,
-        "category": category,
-        "contact": contact,
-        "hubspot": hubspot_result,
-        "timestamp": datetime.now().isoformat()
-    })
+    try:
+        # Test verisi ile form mapping dene
+        extracted = extract_form_data(data)
+        category = determine_category(extracted)
+        contact = get_contact_info(extracted)
+        
+        # Debug print
+        print(f"Debug - Contact: {contact}")
+        print(f"Debug - Category: {category}")
+        
+        # HubSpot'a test kaydı gönder (email kontrolü ile)
+        hubspot_result = {"message": "Email bulunamadı, HubSpot'a gönderilmedi"}
+        if contact and contact.get('email'):  # ← DÜZELTME
+            hubspot_result = save_to_hubspot(contact, category, extracted)
+        
+        return jsonify({
+            "message": "Test başarılı!",
+            "received": data,
+            "extracted": extracted,
+            "category": category,
+            "contact": contact,
+            "hubspot": hubspot_result,
+            "timestamp": datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        print(f"❌ Test endpoint hatası: {str(e)}")
+        return jsonify({
+            "error": f"Test failed: {str(e)}",
+            "timestamp": datetime.now().isoformat()
+        }), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
