@@ -258,10 +258,18 @@ def save_to_hubspot(contact_info, category, extracted_data):
         
         # HubSpot custom properties (bu alanları HubSpot'ta oluşturmanız gerekebilir)
         if education_details['gpa']:
-            properties["gpa"] = str(education_details['gpa'])
+            # GPA'yı number olarak gönder (HubSpot'ta Number field olarak oluşturuldu)
+            try:
+                properties["gpa"] = float(education_details['gpa'])
+            except (ValueError, TypeError):
+                properties["gpa"] = education_details['gpa']  # String olarak gönder
         
         if education_details['budget']:
-            properties["budget"] = str(education_details['budget'])
+            # Budget'ı number olarak gönder
+            try:
+                properties["budget"] = float(education_details['budget'])
+            except (ValueError, TypeError):
+                properties["budget"] = str(education_details['budget'])
             
         if education_details['education_programs']:
             properties["education_level"] = education_details['education_programs']
