@@ -122,18 +122,10 @@ def get_contact_info(extracted_data):
     email = extracted_data.get('email', '')
     phone = extracted_data.get('phone', '')
     
-    # Name'i firstname/lastname'e böl
-    name_parts = name.split(' ', 1) if name else ['', '']
-    firstname = name_parts[0] if len(name_parts) > 0 else ''
-    lastname = name_parts[1] if len(name_parts) > 1 else ''
-    
-    return {
-        'firstname': firstname,
-        'lastname': lastname, 
-        'fullname': name,
-        'email': email,
-        'phone': str(phone) if phone else ''
-    }
+    # Name'i firstname/lastname'e böl - DÜZELTME
+    name_parts = name.split(' ')  # ← DEĞIŞEN KISIM
+    firstname = name_parts[0] if name_parts else ''
+    lastname = ' '.join(name_parts[1:]) if len(name_parts) > 1 else ''  # ← DEĞIŞEN KISIM
 
 def get_education_details(extracted_data):
     """Eğitim detaylarını topla"""
