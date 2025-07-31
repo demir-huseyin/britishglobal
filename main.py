@@ -1,8 +1,13 @@
 from flask import Flask, request, jsonify
 import json
+import requests
+import os
 from datetime import datetime
 
 app = Flask(__name__)
+
+# HubSpot API Key - Environment variable'dan al
+HUBSPOT_API_KEY = os.environ.get('HUBSPOT_API_KEY', '')
 
 def extract_form_data(tally_data):
     """Tally webhook verisinden form alanlarını çıkar"""
@@ -130,9 +135,163 @@ def get_contact_info(extracted_data):
         'phone': str(phone) if phone else ''
     }
 
+def get_education_details(extracted_data):
+    """Eğitim detaylarını topla"""
+    education_levels = []
+    
+    if extracted_data.get('lise'):
+        education_levels.append('Lise')
+    if extracted_data.get('lisans'):
+        education_levels.append(f"Lisans: {extracted_data.get('lisans')}")
+    if extracted_data.get('master'):
+        education_levels.append(f"Master: {extracted_data.get('master')}")
+    if extracted_data.get('doktora'):
+        education_levels.append('Doktora')
+    if extracted_data.get('dil_okulu'):
+        education_levels.append('Dil Okulu')
+    if extracted_data.get('yaz_kampi'):
+        education_levels.append('Yaz Kampı')
+    
+    return {
+        'education_programs': ', '.join(education_levels),
+        'gpa': extracted_data.get('not_ortalama', ''),
+        'budget': extracted_data.get('butce', '')
+    }
+
+def get_legal_details(extracted_data):
+    """Hukuk detaylarını topla"""
+    legal_services = []
+    
+    if extracted_data.get('turistik_vize'):
+        legal_services.append('Turistik Vize')
+    if extracted_data.get('ogrenci_vize'):
+        legal_services.append('Öğrenci Vizesi')
+    if extracted_data.get('calisma_vize'):
+        legal_services.append('Çalışma Vizesi')
+    if extracted_data.get('aile_vize'):
+        legal_services.append('Aile Birleşimi')
+    if extracted_data.get('ilr'):
+        legal_services.append('Süresiz Oturum')
+    if extracted_data.get('vatandaslik'):
+        legal_services.append('Vatandaşlık')
+    if extracted_data.get('vize_red'):
+        legal_services.append('Vize Red İtiraz')
+    
+    return {
+        'legal_services': ', '.join(legal_services),
+        'legal_topic': extracted_data.get('hukuk_konu', '')
+    }
+
+def get_business_details(extracted_data):
+    """Ticari detayları topla"""
+    sectors = []
+    
+    # Sektör detaylarını topla
+    sector_fields = ['ambalaj', 'tekstil', 'ayakkabi', 'mobilya', 'gida', 
+                    'taki', 'hediye', 'kozmetik', 'oyuncak', 'temizlik',
+                    'ev_gereci', 'hirdavat', 'otomotiv', 'bahce', 'diger_sektor']
+    
+    for field in sector_fields:
+        if extracted_data.get(field):
+            sectors.append(field.title())
+    
+    return {
+        'company_name': extracted_data.get('sirket_adi', ''),
+        'sector': extracted_data.get('sektor', ''),
+        'sector_details': ', '.join(sectors)
+    }
+
+def save_to_hubspot(contact_info, category, extracted_data):
+    """HubSpot'a contact kaydet"""
+    
+    if not HUBSPOT_API_KEY:
+        print("⚠️ HubSpot API Key bulunamadı - Environment variable set edilmedi")
+        return {"success": False, "error": "API Key bulunamadı"}
+    
+    # HubSpot API endpoint
+    url = "https://api.hubapi.com/crm/v3/objects/contacts"
+    
+    # Headers
+    headers = {
+        "Authorization": f"Bearer {HUBSPOT_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    
+    # Base properties
+    properties = {
+        "email": contact_info['email'],
+        "firstname": contact_info['firstname'],
+        "lastname": contact_info['lastname'],
+        "phone": contact_info['phone'],
+        "lifecyclestage": "lead",
+        "lead_source": "Tally Form - British Global"
+    }
+    
+    # Kategori bazlı ek bilgiler
+    if category == 'education':
+        edu_details = get_education_details(extracted_data)
+        properties.update({
+            "service_category": "Eğitim",
+            "education_programs": edu_details['education_programs'],
+            "hs_lead_status": "NEW"
+        })
+    
+    elif category == 'legal':
+        legal_details = get_legal_details(extracted_data)
+        properties.update({
+            "service_category": "Hukuk", 
+            "legal_services": legal_details['legal_services'],
+            "hs_lead_status": "NEW"
+        })
+    
+    elif category == 'business':
+        business_details = get_business_details(extracted_data)
+        properties.update({
+            "service_category": "Ticari",
+            "company": business_details['company_name'],
+            "industry": business_details['sector'],
+            "hs_lead_status": "NEW"
+        })
+    
+    # Request payload
+    payload = {
+        "properties": properties
+    }
+    
+    try:
+        print(f"🔄 HubSpot'a gönderiliyor: {contact_info['email']}")
+        print(f"Properties: {json.dumps(properties, indent=2, ensure_ascii=False)}")
+        
+        response = requests.post(url, headers=headers, json=payload)
+        
+        if response.status_code in [200, 201]:
+            result = response.json()
+            contact_id = result.get('id')
+            print(f"✅ HubSpot'a kaydedildi - Contact ID: {contact_id}")
+            
+            return {
+                "success": True,
+                "contact_id": contact_id,
+                "properties_sent": properties
+            }
+        
+        else:
+            error_msg = response.text
+            print(f"❌ HubSpot API hatası: {response.status_code} - {error_msg}")
+            
+            return {
+                "success": False,
+                "error": error_msg,
+                "status_code": response.status_code
+            }
+    
+    except Exception as e:
+        print(f"❌ HubSpot kayıt hatası: {str(e)}")
+        return {"success": False, "error": str(e)}
+
 @app.route("/tally", methods=["POST"])
 def tally_webhook():
-    """Tally webhook endpoint - Adım 2: Form mapping ve kategori belirleme"""
+    """Tally webhook endpoint - Adım 3: HubSpot entegrasyonu ile"""
     try:
         # Gelen veriyi al
         data = request.json
@@ -160,14 +319,18 @@ def tally_webhook():
             print("❌ EMAIL BULUNAMADI!")
             return jsonify({"error": "Email adresi bulunamadı"}), 400
         
+        # HubSpot'a kaydet
+        hubspot_result = save_to_hubspot(contact, category, extracted)
+        
         print("=" * 60)
         
         # Başarılı response
         return jsonify({
             "status": "success",
-            "message": "Form verisi başarıyla işlendi",
+            "message": "Form verisi başarıyla işlendi ve HubSpot'a kaydedildi",
             "category": category,
             "contact": contact,
+            "hubspot": hubspot_result,
             "timestamp": datetime.now().isoformat()
         }), 200
         
@@ -178,16 +341,19 @@ def tally_webhook():
 @app.route("/", methods=["GET"])
 def health_check():
     """Sağlık kontrolü"""
+    hubspot_status = "✅ Configured" if HUBSPOT_API_KEY else "❌ Not configured"
+    
     return jsonify({
         "status": "OK",
         "service": "British Global Webhook",
-        "version": "2.0 - Adım 2: Form Mapping",
+        "version": "3.0 - Adım 3: HubSpot Integration",
+        "hubspot_api": hubspot_status,
         "timestamp": datetime.now().isoformat()
     })
 
 @app.route("/test", methods=["POST"])
 def test_endpoint():
-    """Test için endpoint - form mapping test"""
+    """Test için endpoint - HubSpot entegrasyonu ile"""
     data = request.json
     
     # Test verisi ile form mapping dene
@@ -195,12 +361,18 @@ def test_endpoint():
     category = determine_category(extracted)
     contact = get_contact_info(extracted)
     
+    # HubSpot'a test kaydı gönder (eğer email varsa)
+    hubspot_result = {"message": "Email bulunamadı, HubSpot'a gönderilmedi"}
+    if contact['email']:
+        hubspot_result = save_to_hubspot(contact, category, extracted)
+    
     return jsonify({
         "message": "Test başarılı!",
         "received": data,
         "extracted": extracted,
         "category": category,
         "contact": contact,
+        "hubspot": hubspot_result,
         "timestamp": datetime.now().isoformat()
     })
 
