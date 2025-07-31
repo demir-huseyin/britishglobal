@@ -2,12 +2,26 @@ from flask import Flask, request, jsonify
 import json
 import requests
 import os
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 
 app = Flask(__name__)
 
 # HubSpot API Key - Environment variable'dan al
 HUBSPOT_API_KEY = os.environ.get('HUBSPOT_API_KEY', '')
+
+# EMAIL AYARLARI - Turhost SMTP
+SMTP_SERVER = os.environ.get('SMTP_SERVER', 'mail.britishglobal.com.tr')
+SMTP_PORT = int(os.environ.get('SMTP_PORT', '587'))
+EMAIL_USER = os.environ.get('EMAIL_USER', 'info@britishglobal.com.tr')
+EMAIL_PASSWORD = os.environ.get('EMAIL_PASSWORD', '#7U<gIbZ')
+
+# MAIL ADRESLERİ
+ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'info@britishglobal.com.tr')
+EDUCATION_PARTNER_EMAIL = os.environ.get('EDUCATION_PARTNER_EMAIL', 'demirhuseyin@outlook.com')
+LEGAL_PARTNER_EMAIL = os.environ.get('LEGAL_PARTNER_EMAIL', 'info@catalcaorganik.com')
 
 def extract_form_data(tally_data):
     """Tally webhook verisinden form alanlarını çıkar - Çok dilli destek"""
@@ -209,7 +223,193 @@ def get_legal_details(extracted_data):
         'legal_topic': extracted_data.get('hukuk_konu', '')
     }
 
-def get_business_details(extracted_data):
+def send_notification_email(contact_info, category, extracted_data):
+    """Kategori bazlı bildirim maili gönder"""
+    
+    if not EMAIL_USER or not EMAIL_PASSWORD:
+        print("⚠️ Email ayarları bulunamadı")
+        return {"success": False, "error": "Email ayarları bulunamadı"}
+    
+    try:
+        # Mail içeriği oluştur
+        subject, body, recipients = create_email_content(contact_info, category, extracted_data)
+        
+        # SMTP bağlantısı
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.starttls()
+        server.login(EMAIL_USER, EMAIL_PASSWORD)
+        
+        # Her alıcıya mail gönder
+        results = []
+        for recipient in recipients:
+            msg = MIMEMultipart()
+            msg['From'] = EMAIL_USER
+            msg['To'] = recipient
+            msg['Subject'] = subject
+            msg.attach(MIMEText(body, 'html', 'utf-8'))
+            
+            try:
+                server.send_message(msg)
+                results.append({"recipient": recipient, "status": "success"})
+                print(f"✅ Mail gönderildi: {recipient}")
+            except Exception as e:
+                results.append({"recipient": recipient, "status": "failed", "error": str(e)})
+                print(f"❌ Mail gönderilemedi {recipient}: {str(e)}")
+        
+        server.quit()
+        return {"success": True, "results": results}
+        
+    except Exception as e:
+        print(f"❌ Email hatası: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+def create_email_content(contact_info, category, extracted_data):
+    """Mail içeriği ve alıcıları oluştur"""
+    
+    # Alıcıları belirle - Kategori bazlı
+    recipients = [ADMIN_EMAIL]  # Admin her zaman alır
+    
+    if category == 'education' and EDUCATION_PARTNER_EMAIL:
+        recipients.append(EDUCATION_PARTNER_EMAIL)
+    elif category == 'legal' and LEGAL_PARTNER_EMAIL:
+        recipients.append(LEGAL_PARTNER_EMAIL)
+    # Business sadece admin'e gider
+    
+    # Subject oluştur
+    category_tr = {
+        'education': 'Eğitim',
+        'legal': 'Hukuk', 
+        'business': 'Ticari'
+    }
+    
+    subject = f"🔔 Yeni {category_tr.get(category, 'Genel')} Başvurusu - {contact_info['firstname']} {contact_info['lastname']}"
+    
+    # HTML Body oluştur
+    body = f"""
+    <html>
+    <head>
+        <style>
+            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+            .header {{ background-color: #2c3e50; color: white; padding: 20px; text-align: center; }}
+            .content {{ padding: 20px; }}
+            .info-box {{ background-color: #f8f9fa; border-left: 4px solid #007bff; padding: 15px; margin: 15px 0; }}
+            .category-education {{ border-left-color: #28a745; }}
+            .category-legal {{ border-left-color: #dc3545; }}
+            .category-business {{ border-left-color: #ffc107; }}
+            table {{ width: 100%; border-collapse: collapse; margin: 15px 0; }}
+            th, td {{ padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }}
+            th {{ background-color: #f2f2f2; font-weight: bold; }}
+            .footer {{ background-color: #f8f9fa; padding: 15px; text-align: center; font-size: 12px; color: #666; }}
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>🎯 British Global - Yeni Başvuru</h1>
+            <p>{category_tr.get(category, 'Genel')} Danışmanlık Talebi</p>
+        </div>
+        
+        <div class="content">
+            <div class="info-box category-{category}">
+                <h2>📋 Başvuru Bilgileri</h2>
+                <p><strong>Kategori:</strong> {category_tr.get(category, 'Genel')} Danışmanlık</p>
+                <p><strong>Tarih:</strong> {datetime.now().strftime('%d/%m/%Y %H:%M')}</p>
+                <p><strong>Submission ID:</strong> {extracted_data.get('submission_id', 'N/A')}</p>
+            </div>
+            
+            <h2>👤 İletişim Bilgileri</h2>
+            <table>
+                <tr><th>Ad Soyad</th><td>{contact_info['firstname']} {contact_info['lastname']}</td></tr>
+                <tr><th>Email</th><td><a href="mailto:{contact_info['email']}">{contact_info['email']}</a></td></tr>
+                <tr><th>Telefon</th><td><a href="tel:{contact_info['phone']}">{contact_info['phone']}</a></td></tr>
+            </table>
+    """
+    
+    # Kategori özel bilgileri ekle
+    if category == 'education':
+        education_details = get_education_details(extracted_data)
+        body += f"""
+            <h2>🎓 Eğitim Detayları</h2>
+            <table>
+                <tr><th>İlgilenilen Program</th><td>{education_details['education_programs'] or 'Belirtilmemiş'}</td></tr>
+                <tr><th>Not Ortalaması</th><td>{education_details['gpa'] or 'Belirtilmemiş'}</td></tr>
+                <tr><th>Bütçe</th><td>£{education_details['budget']:,} </td></tr>
+            </table>
+        """
+        
+        # Detaylı program bilgisi
+        programs = []
+        if extracted_data.get('doktora'): programs.append('🎯 Doktora (PhD)')
+        if extracted_data.get('master'): programs.append('🎓 Yüksek Lisans (Master)')
+        if extracted_data.get('lisans'): programs.append('📚 Lisans')
+        if extracted_data.get('lise'): programs.append('🏫 Lise')
+        if extracted_data.get('dil_okulu'): programs.append('🗣️ Dil Okulu')
+        if extracted_data.get('yaz_kampi'): programs.append('🏕️ Yaz Kampı')
+        
+        if programs:
+            body += f"""
+                <div class="info-box">
+                    <h3>Seçilen Programlar:</h3>
+                    <ul>{''.join(f'<li>{p}</li>' for p in programs)}</ul>
+                </div>
+            """
+    
+    elif category == 'legal':
+        legal_details = get_legal_details(extracted_data)
+        body += f"""
+            <h2>⚖️ Hukuk Detayları</h2>
+            <table>
+                <tr><th>Hukuki Hizmetler</th><td>{legal_details['legal_services'] or 'Belirtilmemiş'}</td></tr>
+                <tr><th>Açıklama</th><td>{legal_details['legal_topic'] or 'Belirtilmemiş'}</td></tr>
+            </table>
+        """
+        
+        # Detaylı hizmet listesi
+        services = []
+        if extracted_data.get('turistik_vize'): services.append('🧳 Turistik Vize')
+        if extracted_data.get('ogrenci_vize'): services.append('🎓 Öğrenci Vizesi')
+        if extracted_data.get('calisma_vize'): services.append('💼 Çalışma Vizesi')
+        if extracted_data.get('aile_vize'): services.append('👨‍👩‍👧‍👦 Aile Birleşimi')
+        if extracted_data.get('ilr'): services.append('🏠 Süresiz Oturum (ILR)')
+        if extracted_data.get('vatandaslik'): services.append('🇬🇧 Vatandaşlık')
+        if extracted_data.get('vize_red'): services.append('❌ Vize Red İtiraz')
+        
+        if services:
+            body += f"""
+                <div class="info-box">
+                    <h3>İhtiyaç Duyulan Hizmetler:</h3>
+                    <ul>{''.join(f'<li>{s}</li>' for s in services)}</ul>
+                </div>
+            """
+    
+    elif category == 'business':
+        business_details = get_business_details(extracted_data)
+        body += f"""
+            <h2>💼 Ticari Detaylar</h2>
+            <table>
+                <tr><th>Şirket Adı</th><td>{business_details['company_name'] or 'Belirtilmemiş'}</td></tr>
+                <tr><th>Sektör</th><td>{business_details['sector'] or 'Belirtilmemiş'}</td></tr>
+                <tr><th>Sektör Detayları</th><td>{business_details['sector_details'] or 'Belirtilmemiş'}</td></tr>
+            </table>
+        """
+    
+    # Footer ekle
+    body += f"""
+            <div class="info-box">
+                <h3>🚀 Sonraki Adımlar</h3>
+                <p>Bu başvuru HubSpot sistemine kaydedildi. Müşteriyi 24 saat içinde aramayı unutmayın!</p>
+                <p><strong>HubSpot Contact ID:</strong> Yakında eklenecek</p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Bu mail British Global webhook sistemi tarafından otomatik oluşturulmuştur.</p>
+            <p>📧 {', '.join(recipients)} adreslerine gönderildi</p>
+        </div>
+    </body>
+    </html>
+    """
+    
+    return subject, body, recipients
     """Ticari detayları topla"""
     sectors = []
     
@@ -454,6 +654,9 @@ def tally_webhook():
         # HubSpot'a kaydet
         hubspot_result = save_to_hubspot(contact, category, extracted)
         
+        # Email bildirim gönder
+        email_result = send_notification_email(contact, category, extracted)
+        
         print("=" * 60)
         
         # Başarılı response
@@ -463,6 +666,7 @@ def tally_webhook():
             "category": category,
             "contact": contact,
             "hubspot": hubspot_result,
+            "email": email_result,
             "timestamp": datetime.now().isoformat()
         }), 200
         
@@ -500,8 +704,12 @@ def test_endpoint():
         
         # HubSpot'a test kaydı gönder (email kontrolü ile)
         hubspot_result = {"message": "Email bulunamadı, HubSpot'a gönderilmedi"}
+        email_result = {"message": "Test modu - email gönderilmedi"}
+        
         if contact and contact.get('email'):
             hubspot_result = save_to_hubspot(contact, category, extracted)
+            # Test modunda email göndermeyi aktif etmek isterseniz açın:
+            # email_result = send_notification_email(contact, category, extracted)
         
         return jsonify({
             "message": "Test başarılı!",
@@ -510,6 +718,7 @@ def test_endpoint():
             "category": category,
             "contact": contact,
             "hubspot": hubspot_result,
+            "email": email_result,
             "timestamp": datetime.now().isoformat()
         })
         
