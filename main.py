@@ -659,15 +659,10 @@ def tally_webhook():
         
         print("=" * 60)
         
-        # Başarılı response
+        # Başarılı response - Tally için basit format
         return jsonify({
             "status": "success",
-            "message": "Form verisi başarıyla işlendi ve HubSpot'a kaydedildi",
-            "category": category,
-            "contact": contact,
-            "hubspot": hubspot_result,
-            "email": email_result,
-            "timestamp": datetime.now().isoformat()
+            "message": "Form received successfully"
         }), 200
         
     except Exception as e:
