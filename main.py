@@ -659,11 +659,8 @@ def tally_webhook():
         
         print("=" * 60)
         
-        # Başarılı response - Tally için basit format
-        return jsonify({
-            "status": "success",
-            "message": "Form received successfully"
-        }), 200
+        # Başarılı response - Tally için en basit format
+        return "OK", 200
         
     except Exception as e:
         print(f"❌ HATA: {str(e)}")
