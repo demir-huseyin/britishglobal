@@ -10,7 +10,7 @@ app = Flask(__name__)
 HUBSPOT_API_KEY = os.environ.get('HUBSPOT_API_KEY', '')
 
 def extract_form_data(tally_data):
-    """Tally webhook verisinden form alanlarını çıkar"""
+    """Tally webhook verisinden form alanlarını çıkar - Çok dilli destek"""
     
     # Gerçek Tally webhook formatı - fields array'i kullanıyor
     form_fields = tally_data.get('data', {}).get('fields', [])
@@ -28,45 +28,70 @@ def extract_form_data(tally_data):
     print(f"📋 Field labels: {list(field_dict.keys())}")
     print(f"🔍 Field values: {field_dict}")
     
+    # ÇOK DİLLİ FIELD MAPPING - Türkçe ve İngilizce
+    def get_field_value(turkish_label, english_label=""):
+        """Türkçe veya İngilizce label'dan değer al"""
+        return (field_dict.get(turkish_label) or 
+                field_dict.get(english_label) or 
+                field_dict.get(turkish_label.lower()) or
+                field_dict.get(english_label.lower()) or
+                "")
+    
     # Temel bilgiler
     extracted = {
         'submission_id': tally_data.get('data', {}).get('responseId', ''),
         'submitted_at': tally_data.get('createdAt', ''),
         
-        # Kişisel bilgiler - Tally field labels'a göre
-        'name': field_dict.get('Adınız Soyadınız', ''),
-        'email': field_dict.get('E-mail Adresiniz', ''),
-        'phone': field_dict.get('Telefon Numaranız', ''),
+        # Kişisel bilgiler - Çok dilli
+        'name': get_field_value('Adınız Soyadınız', 'Full Name'),
+        'email': get_field_value('E-mail Adresiniz', 'Email Address'), 
+        'phone': get_field_value('Telefon Numaranız', 'Phone Number'),
         
-        # Kategori belirleme alanları - Boolean kontrolü düzeltildi
-        'ticari': field_dict.get('Hangi Konuda Danışmanlık Almak İstiyorsunuz? (Ticari Danışmanlık)', False) == True,
-        'egitim': field_dict.get('Hangi Konuda Danışmanlık Almak İstiyorsunuz? (Eğitim Danışmanlığı)', False) == True,
-        'hukuk': field_dict.get('Hangi Konuda Danışmanlık Almak İstiyorsunuz? (Vize ve Hukuki Danışmanlık)', False) == True,
+        # Kategori belirleme alanları - Çok dilli destek
+        'ticari': (get_field_value('Hangi Konuda Danışmanlık Almak İstiyorsunuz? (Ticari Danışmanlık)', 
+                                  'What type of consultation do you need? (Business Consulting)') == True),
+        'egitim': (get_field_value('Hangi Konuda Danışmanlık Almak İstiyorsunuz? (Eğitim Danışmanlığı)', 
+                                  'What type of consultation do you need? (Education Consulting)') == True),
+        'hukuk': (get_field_value('Hangi Konuda Danışmanlık Almak İstiyorsunuz? (Vize ve Hukuki Danışmanlık)', 
+                                 'What type of consultation do you need? (Visa and Legal Consulting)') == True),
         
-        # Eğitim alanları - Boolean kontrolü düzeltildi
-        'egitim_seviye': field_dict.get('İlgilendiğiniz Eğitim Seviyesi', ''),
-        'lise': field_dict.get('İlgilendiğiniz Eğitim Seviyesi (Lise (İngiltere\'de lise eğitimi almak isteyenler için))', False) == True,
-        'lisans': field_dict.get('İlgilendiğiniz Eğitim Seviyesi (Lisans (Üniversite eğitimi))', False) == True,
-        'master': field_dict.get('İlgilendiğiniz Eğitim Seviyesi (Yüksek Lisans (Master programları))', False) == True,
-        'doktora': field_dict.get('İlgilendiğiniz Eğitim Seviyesi (Doktora (Phd programları))', False) == True,
-        'dil_okulu': field_dict.get('İlgilendiğiniz Eğitim Seviyesi (Dil Okulları (Yetişkinler için genel, IELTS veya mesleki İngilizce) )', False) == True,
-        'yaz_kampi': field_dict.get('İlgilendiğiniz Eğitim Seviyesi (Yaz Kampı (12-18 yaş grubu))', False) == True,
-        'not_ortalama': field_dict.get('Not Ortalamanız', ''),
-        'butce': field_dict.get('Eğitim ve Konaklama için Düşündüğünüz Bütçe Nedir? (£)', ''),
+        # Eğitim alanları - Çok dilli
+        'egitim_seviye': get_field_value('İlgilendiğiniz Eğitim Seviyesi', 'Education Level of Interest'),
+        'lise': (get_field_value('İlgilendiğiniz Eğitim Seviyesi (Lise (İngiltere\'de lise eğitimi almak isteyenler için))', 
+                                'Education Level (High School in the UK)') == True),
+        'lisans': (get_field_value('İlgilendiğiniz Eğitim Seviyesi (Lisans (Üniversite eğitimi))', 
+                                  'Education Level (Bachelor\'s Degree)') == True),
+        'master': (get_field_value('İlgilendiğiniz Eğitim Seviyesi (Yüksek Lisans (Master programları))', 
+                                  'Education Level (Master\'s Programs)') == True),
+        'doktora': (get_field_value('İlgilendiğiniz Eğitim Seviyesi (Doktora (Phd programları))', 
+                                   'Education Level (PhD Programs)') == True),
+        'dil_okulu': (get_field_value('İlgilendiğiniz Eğitim Seviyesi (Dil Okulları (Yetişkinler için genel, IELTS veya mesleki İngilizce) )', 
+                                     'Education Level (Language Schools)') == True),
+        'yaz_kampi': (get_field_value('İlgilendiğiniz Eğitim Seviyesi (Yaz Kampı (12-18 yaş grubu))', 
+                                     'Education Level (Summer Camp 12-18 years)') == True),
+        'not_ortalama': get_field_value('Not Ortalamanız', 'Your GPA'),
+        'butce': get_field_value('Eğitim ve Konaklama için Düşündüğünüz Bütçe Nedir? (£)', 'Budget for Education and Accommodation (£)'),
         
-        # Hukuk alanları - Boolean kontrolü düzeltildi
-        'hukuk_konu': field_dict.get('Hangi konularda hukuki destek almak istiyorsunuz?', ''),
-        'turistik_vize': field_dict.get('Hangi konularda hukuki destek almak istiyorsunuz? (İngiltere Turistik Vize (Visitor Visa))', False) == True,
-        'ogrenci_vize': field_dict.get('Hangi konularda hukuki destek almak istiyorsunuz? (İngiltere Öğrenci Vizesi (Tier 4 / Graduate Route))', False) == True,
-        'calisma_vize': field_dict.get('Hangi konularda hukuki destek almak istiyorsunuz? (İngiltere Çalışma Vizesi (Skilled Worker, Health and Care vb.))', False) == True,
-        'aile_vize': field_dict.get('Hangi konularda hukuki destek almak istiyorsunuz? (İngiltere Aile Birleşimi / Partner Vizesi)', False) == True,
-        'ilr': field_dict.get('Hangi konularda hukuki destek almak istiyorsunuz? (İngiltere\'de Süresiz Oturum (ILR) Başvurusu)', False) == True,
-        'vatandaslik': field_dict.get('Hangi konularda hukuki destek almak istiyorsunuz? (İngiltere Vatandaşlık Başvurusu)', False) == True,
-        'vize_red': field_dict.get('Hangi konularda hukuki destek almak istiyorsunuz? (Vize Reddi İtiraz ve Yeniden Başvuru Danışmanlığı)', False) == True,
+        # Hukuk alanları - Çok dilli
+        'hukuk_konu': get_field_value('Hangi konularda hukuki destek almak istiyorsunuz?', 'What legal services do you need?'),
+        'turistik_vize': (get_field_value('Hangi konularda hukuki destek almak istiyorsunuz? (İngiltere Turistik Vize (Visitor Visa))', 
+                                         'Legal Services (UK Tourist Visa)') == True),
+        'ogrenci_vize': (get_field_value('Hangi konularda hukuki destek almak istiyorsunuz? (İngiltere Öğrenci Vizesi (Tier 4 / Graduate Route))', 
+                                        'Legal Services (UK Student Visa)') == True),
+        'calisma_vize': (get_field_value('Hangi konularda hukuki destek almak istiyorsunuz? (İngiltere Çalışma Vizesi (Skilled Worker, Health and Care vb.))', 
+                                        'Legal Services (UK Work Visa)') == True),
+        'aile_vize': (get_field_value('Hangi konularda hukuki destek almak istiyorsunuz? (İngiltere Aile Birleşimi / Partner Vizesi)', 
+                                     'Legal Services (UK Family/Partner Visa)') == True),
+        'ilr': (get_field_value('Hangi konularda hukuki destek almak istiyorsunuz? (İngiltere\'de Süresiz Oturum (ILR) Başvurusu)', 
+                               'Legal Services (UK Indefinite Leave to Remain)') == True),
+        'vatandaslik': (get_field_value('Hangi konularda hukuki destek almak istiyorsunuz? (İngiltere Vatandaşlık Başvurusu)', 
+                                       'Legal Services (UK Citizenship Application)') == True),
+        'vize_red': (get_field_value('Hangi konularda hukuki destek almak istiyorsunuz? (Vize Reddi İtiraz ve Yeniden Başvuru Danışmanlığı)', 
+                                    'Legal Services (Visa Refusal Appeal)') == True),
         
-        # Ticari alanları
-        'sirket_adi': field_dict.get('Şirketinizin Adı', ''),
-        'sektor': field_dict.get('Sektörünüz', ''),
+        # Ticari alanları - Çok dilli
+        'sirket_adi': get_field_value('Şirketinizin Adı', 'Company Name'),
+        'sektor': get_field_value('Sektörünüz', 'Your Industry'),
         
         # Sektör detayları - Boolean kontrolü düzeltildi
         'ambalaj': field_dict.get('Sektörünüz (Ambalaj ve Baskı Ürünleri)', False) == True,
@@ -219,19 +244,48 @@ def save_to_hubspot(contact_info, category, extracted_data):
     # DOĞRU HubSpot field names
     properties = {
         "email": contact_info['email'],
-        "firstname": contact_info['firstname'] or "Bilinmiyor",
-        "lastname": contact_info['lastname'] or "Bilinmiyor", 
+        "firstname": contact_info['firstname'] or "",
+        "lastname": contact_info['lastname'] or "", 
         "phone": contact_info['phone'],
         "lifecyclestage": "lead",
         "hs_lead_status": "NEW",
         "jobtitle": f"{category.title()} Başvurusu"
     }
     
+    # Eğitim kategorisi için özel alanlar ekle
+    if category == 'education':
+        education_details = get_education_details(extracted_data)
+        
+        # HubSpot custom properties (bu alanları HubSpot'ta oluşturmanız gerekebilir)
+        if education_details['gpa']:
+            properties["gpa"] = str(education_details['gpa'])
+        
+        if education_details['budget']:
+            properties["budget"] = str(education_details['budget'])
+            
+        if education_details['education_programs']:
+            properties["education_level"] = education_details['education_programs']
+    
+    # Business kategorisi için şirket bilgileri
+    elif category == 'business':
+        business_details = get_business_details(extracted_data)
+        if business_details['sector_details']:
+            properties["industry"] = business_details['sector_details']
+    
+    # Legal kategorisi için hukuk bilgileri  
+    elif category == 'legal':
+        legal_details = get_legal_details(extracted_data)
+        if legal_details['legal_services']:
+            properties["legal_service_type"] = legal_details['legal_services']
+    
     # Company field - kategori bazlı
     if category == 'business' and extracted_data.get('sirket_adi'):
         properties["company"] = extracted_data.get('sirket_adi')
     else:
         properties["company"] = f"British Global - {category.title()}"
+    
+    # Temizle - boş değerleri kaldır
+    properties = {k: v for k, v in properties.items() if v and v != ""}
     
     # Debug
     print(f"📋 HubSpot Properties:")
@@ -280,11 +334,25 @@ def create_hubspot_note(contact_id, category, extracted_data):
         education_details = get_education_details(extracted_data)
         note_body += "🎓 EĞİTİM DANIŞMANLIĞI\n"
         if education_details['education_programs']:
-            note_body += f"📚 İlgilenilen Programlar: {education_details['education_programs']}\n"
+            note_body += f"📚 Program: {education_details['education_programs']}\n"
         if education_details['gpa']:
             note_body += f"📊 Not Ortalaması: {education_details['gpa']}\n"
         if education_details['budget']:
-            note_body += f"💰 Bütçe: £{education_details['budget']}\n"
+            note_body += f"💰 Bütçe: £{education_details['budget']:,}\n"
+        
+        # Detaylı program listesi
+        if extracted_data.get('doktora'):
+            note_body += "🎯 Seviye: Doktora (PhD programları)\n"
+        elif extracted_data.get('master'):
+            note_body += "🎯 Seviye: Yüksek Lisans (Master)\n"
+        elif extracted_data.get('lisans'):
+            note_body += "🎯 Seviye: Lisans (Üniversite)\n"
+        elif extracted_data.get('lise'):
+            note_body += "🎯 Seviye: Lise\n"
+        elif extracted_data.get('dil_okulu'):
+            note_body += "🎯 Seviye: Dil Okulu\n"
+        elif extracted_data.get('yaz_kampi'):
+            note_body += "🎯 Seviye: Yaz Kampı\n"
     
     elif category == 'legal':
         legal_details = get_legal_details(extracted_data)
