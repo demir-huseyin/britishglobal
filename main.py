@@ -20,10 +20,13 @@ def extract_form_data(tally_data):
     for field in form_fields:
         label = field.get('label', '')
         value = field.get('value')
-        field_dict[label] = value
+        # Null değerleri güvenli şekilde handle et
+        if value is not None:
+            field_dict[label] = value
     
     print(f"🔍 Tally fields: {len(form_fields)} adet")
     print(f"📋 Field labels: {list(field_dict.keys())}")
+    print(f"🔍 Field values: {field_dict}")
     
     # Temel bilgiler
     extracted = {
@@ -35,52 +38,52 @@ def extract_form_data(tally_data):
         'email': field_dict.get('E-mail Adresiniz', ''),
         'phone': field_dict.get('Telefon Numaranız', ''),
         
-        # Kategori belirleme alanları
-        'ticari': field_dict.get('Hangi Konuda Danışmanlık Almak İstiyorsunuz? (Ticari Danışmanlık)', False),
-        'egitim': field_dict.get('Hangi Konuda Danışmanlık Almak İstiyorsunuz? (Eğitim Danışmanlığı)', False),
-        'hukuk': field_dict.get('Hangi Konuda Danışmanlık Almak İstiyorsunuz? (Vize ve Hukuki Danışmanlık)', False),
+        # Kategori belirleme alanları - Boolean kontrolü düzeltildi
+        'ticari': field_dict.get('Hangi Konuda Danışmanlık Almak İstiyorsunuz? (Ticari Danışmanlık)', False) == True,
+        'egitim': field_dict.get('Hangi Konuda Danışmanlık Almak İstiyorsunuz? (Eğitim Danışmanlığı)', False) == True,
+        'hukuk': field_dict.get('Hangi Konuda Danışmanlık Almak İstiyorsunuz? (Vize ve Hukuki Danışmanlık)', False) == True,
         
-        # Eğitim alanları
+        # Eğitim alanları - Boolean kontrolü düzeltildi
         'egitim_seviye': field_dict.get('İlgilendiğiniz Eğitim Seviyesi', ''),
-        'lise': field_dict.get('İlgilendiğiniz Eğitim Seviyesi (Lise (İngiltere\'de lise eğitimi almak isteyenler için))', False),
-        'lisans': field_dict.get('İlgilendiğiniz Eğitim Seviyesi (Lisans (Üniversite eğitimi))', False),
-        'master': field_dict.get('İlgilendiğiniz Eğitim Seviyesi (Yüksek Lisans (Master programları))', False),
-        'doktora': field_dict.get('İlgilendiğiniz Eğitim Seviyesi (Doktora (Phd programları))', False),
-        'dil_okulu': field_dict.get('İlgilendiğiniz Eğitim Seviyesi (Dil Okulları (Yetişkinler için genel, IELTS veya mesleki İngilizce) )', False),
-        'yaz_kampi': field_dict.get('İlgilendiğiniz Eğitim Seviyesi (Yaz Kampı (12-18 yaş grubu))', False),
+        'lise': field_dict.get('İlgilendiğiniz Eğitim Seviyesi (Lise (İngiltere\'de lise eğitimi almak isteyenler için))', False) == True,
+        'lisans': field_dict.get('İlgilendiğiniz Eğitim Seviyesi (Lisans (Üniversite eğitimi))', False) == True,
+        'master': field_dict.get('İlgilendiğiniz Eğitim Seviyesi (Yüksek Lisans (Master programları))', False) == True,
+        'doktora': field_dict.get('İlgilendiğiniz Eğitim Seviyesi (Doktora (Phd programları))', False) == True,
+        'dil_okulu': field_dict.get('İlgilendiğiniz Eğitim Seviyesi (Dil Okulları (Yetişkinler için genel, IELTS veya mesleki İngilizce) )', False) == True,
+        'yaz_kampi': field_dict.get('İlgilendiğiniz Eğitim Seviyesi (Yaz Kampı (12-18 yaş grubu))', False) == True,
         'not_ortalama': field_dict.get('Not Ortalamanız', ''),
         'butce': field_dict.get('Eğitim ve Konaklama için Düşündüğünüz Bütçe Nedir? (£)', ''),
         
-        # Hukuk alanları
+        # Hukuk alanları - Boolean kontrolü düzeltildi
         'hukuk_konu': field_dict.get('Hangi konularda hukuki destek almak istiyorsunuz?', ''),
-        'turistik_vize': field_dict.get('Hangi konularda hukuki destek almak istiyorsunuz? (İngiltere Turistik Vize (Visitor Visa))', False),
-        'ogrenci_vize': field_dict.get('Hangi konularda hukuki destek almak istiyorsunuz? (İngiltere Öğrenci Vizesi (Tier 4 / Graduate Route))', False),
-        'calisma_vize': field_dict.get('Hangi konularda hukuki destek almak istiyorsunuz? (İngiltere Çalışma Vizesi (Skilled Worker, Health and Care vb.))', False),
-        'aile_vize': field_dict.get('Hangi konularda hukuki destek almak istiyorsunuz? (İngiltere Aile Birleşimi / Partner Vizesi)', False),
-        'ilr': field_dict.get('Hangi konularda hukuki destek almak istiyorsunuz? (İngiltere\'de Süresiz Oturum (ILR) Başvurusu)', False),
-        'vatandaslik': field_dict.get('Hangi konularda hukuki destek almak istiyorsunuz? (İngiltere Vatandaşlık Başvurusu)', False),
-        'vize_red': field_dict.get('Hangi konularda hukuki destek almak istiyorsunuz? (Vize Reddi İtiraz ve Yeniden Başvuru Danışmanlığı)', False),
+        'turistik_vize': field_dict.get('Hangi konularda hukuki destek almak istiyorsunuz? (İngiltere Turistik Vize (Visitor Visa))', False) == True,
+        'ogrenci_vize': field_dict.get('Hangi konularda hukuki destek almak istiyorsunuz? (İngiltere Öğrenci Vizesi (Tier 4 / Graduate Route))', False) == True,
+        'calisma_vize': field_dict.get('Hangi konularda hukuki destek almak istiyorsunuz? (İngiltere Çalışma Vizesi (Skilled Worker, Health and Care vb.))', False) == True,
+        'aile_vize': field_dict.get('Hangi konularda hukuki destek almak istiyorsunuz? (İngiltere Aile Birleşimi / Partner Vizesi)', False) == True,
+        'ilr': field_dict.get('Hangi konularda hukuki destek almak istiyorsunuz? (İngiltere\'de Süresiz Oturum (ILR) Başvurusu)', False) == True,
+        'vatandaslik': field_dict.get('Hangi konularda hukuki destek almak istiyorsunuz? (İngiltere Vatandaşlık Başvurusu)', False) == True,
+        'vize_red': field_dict.get('Hangi konularda hukuki destek almak istiyorsunuz? (Vize Reddi İtiraz ve Yeniden Başvuru Danışmanlığı)', False) == True,
         
         # Ticari alanları
         'sirket_adi': field_dict.get('Şirketinizin Adı', ''),
         'sektor': field_dict.get('Sektörünüz', ''),
         
-        # Sektör detayları
-        'ambalaj': field_dict.get('Sektörünüz (Ambalaj ve Baskı Ürünleri)', False),
-        'tekstil': field_dict.get('Sektörünüz (Tekstil ve Giyim)', False),
-        'ayakkabi': field_dict.get('Sektörünüz (Ayakkabı ve Deri Ürünleri)', False),
-        'mobilya': field_dict.get('Sektörünüz (Mobilya ve Ev Dekorasyonu)', False),
-        'gida': field_dict.get('Sektörünüz (Gıda Ürünleri / Yiyecek-İçecek)', False),
-        'taki': field_dict.get('Sektörünüz (Takı, Bijuteri ve Aksesuar)', False),
-        'hediye': field_dict.get('Sektörünüz (Hediyelik Eşya)', False),
-        'kozmetik': field_dict.get('Sektörünüz (Kozmetik ve Kişisel Bakım)', False),
-        'oyuncak': field_dict.get('Sektörünüz (Oyuncak ve Kırtasiye)', False),
-        'temizlik': field_dict.get('Sektörünüz (Temizlik ve Hijyen Ürünleri)', False),
-        'ev_gereci': field_dict.get('Sektörünüz (Ev Gereçleri ve Mutfak Ürünleri)', False),
-        'hirdavat': field_dict.get('Sektörünüz (Hırdavat / Yapı Malzemeleri)', False),
-        'otomotiv': field_dict.get('Sektörünüz (Otomotiv Yan Sanayi)', False),
-        'bahce': field_dict.get('Sektörünüz (Bahçe ve Outdoor Ürünleri)', False),
-        'diger_sektor': field_dict.get('Sektörünüz (Diğer)', False)
+        # Sektör detayları - Boolean kontrolü düzeltildi
+        'ambalaj': field_dict.get('Sektörünüz (Ambalaj ve Baskı Ürünleri)', False) == True,
+        'tekstil': field_dict.get('Sektörünüz (Tekstil ve Giyim)', False) == True,
+        'ayakkabi': field_dict.get('Sektörünüz (Ayakkabı ve Deri Ürünleri)', False) == True,
+        'mobilya': field_dict.get('Sektörünüz (Mobilya ve Ev Dekorasyonu)', False) == True,
+        'gida': field_dict.get('Sektörünüz (Gıda Ürünleri / Yiyecek-İçecek)', False) == True,
+        'taki': field_dict.get('Sektörünüz (Takı, Bijuteri ve Aksesuar)', False) == True,
+        'hediye': field_dict.get('Sektörünüz (Hediyelik Eşya)', False) == True,
+        'kozmetik': field_dict.get('Sektörünüz (Kozmetik ve Kişisel Bakım)', False) == True,
+        'oyuncak': field_dict.get('Sektörünüz (Oyuncak ve Kırtasiye)', False) == True,
+        'temizlik': field_dict.get('Sektörünüz (Temizlik ve Hijyen Ürünleri)', False) == True,
+        'ev_gereci': field_dict.get('Sektörünüz (Ev Gereçleri ve Mutfak Ürünleri)', False) == True,
+        'hirdavat': field_dict.get('Sektörünüz (Hırdavat / Yapı Malzemeleri)', False) == True,
+        'otomotiv': field_dict.get('Sektörünüz (Otomotiv Yan Sanayi)', False) == True,
+        'bahce': field_dict.get('Sektörünüz (Bahçe ve Outdoor Ürünleri)', False) == True,
+        'diger_sektor': field_dict.get('Sektörünüz (Diğer)', False) == True
     }
     
     return extracted
