@@ -223,7 +223,49 @@ def get_legal_details(extracted_data):
         'legal_topic': extracted_data.get('hukuk_konu', '')
     }
 
-def send_notification_email(contact_info, category, extracted_data):
+def send_notification_email_sendgrid(contact_info, category, extracted_data):
+    """SendGrid ile email gönder (Gmail alternatifi)"""
+    
+    SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY', '')
+    
+    if not SENDGRID_API_KEY:
+        return send_notification_email(contact_info, category, extracted_data)  # Gmail'e geri dön
+    
+    try:
+        # Mail içeriği oluştur
+        subject, body, recipients = create_email_content(contact_info, category, extracted_data)
+        
+        # SendGrid API call
+        url = "https://api.sendgrid.com/v3/mail/send"
+        headers = {
+            "Authorization": f"Bearer {SENDGRID_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        
+        # Her alıcıya mail gönder
+        results = []
+        for recipient in recipients:
+            payload = {
+                "personalizations": [{"to": [{"email": recipient}]}],
+                "from": {"email": EMAIL_USER, "name": "British Global"},
+                "subject": subject,
+                "content": [{"type": "text/html", "value": body}]
+            }
+            
+            response = requests.post(url, headers=headers, json=payload)
+            
+            if response.status_code == 202:
+                results.append({"recipient": recipient, "status": "success"})
+                print(f"✅ SendGrid mail gönderildi: {recipient}")
+            else:
+                results.append({"recipient": recipient, "status": "failed", "error": response.text})
+                print(f"❌ SendGrid hatası {recipient}: {response.text}")
+        
+        return {"success": True, "results": results, "method": "sendgrid"}
+        
+    except Exception as e:
+        print(f"❌ SendGrid hatası, Gmail'e geçiliyor: {str(e)}")
+        return send_notification_email(contact_info, category, extracted_data)
     """Kategori bazlı bildirim maili gönder"""
     
     if not EMAIL_USER or not EMAIL_PASSWORD:
@@ -666,7 +708,9 @@ def tally_webhook():
             print("📧 Email gönderiliyor...")
             print(f"🔧 SMTP Ayarları: {SMTP_SERVER}:{SMTP_PORT}")
             print(f"👤 User: {EMAIL_USER}")
-            print(f"🔑 Password: {EMAIL_PASSWORD[:4]}...")
+            print(f"🔑 Password length: {len(EMAIL_PASSWORD)} karakter")
+            print(f"🔑 Password format check: {EMAIL_PASSWORD.replace(' ', '').isalnum()}")
+            
             email_result = send_notification_email(contact, category, extracted)
             print(f"Email sonuç: {email_result}")
         except Exception as email_error:
@@ -677,8 +721,8 @@ def tally_webhook():
         print("✅ Webhook tamamlandı")
         print("=" * 60)
         
-        # En basit başarılı response
-        return "OK", 200
+        # Tally için özel response format
+        return jsonify({"success": True}), 200
         
     except Exception as e:
         print(f"❌ WEBHOOK HATASI: {str(e)}")
