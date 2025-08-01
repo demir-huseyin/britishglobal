@@ -12,11 +12,11 @@ app = Flask(__name__)
 # HubSpot API Key - Environment variable'dan al
 HUBSPOT_API_KEY = os.environ.get('HUBSPOT_API_KEY', '')
 
-# EMAIL AYARLARI - Turhost SMTP
-SMTP_SERVER = os.environ.get('SMTP_SERVER', 'mail.britishglobal.com.tr')
+# EMAIL AYARLARI - Gmail Workspace
+SMTP_SERVER = os.environ.get('SMTP_SERVER', 'smtp.gmail.com')
 SMTP_PORT = int(os.environ.get('SMTP_PORT', '587'))
 EMAIL_USER = os.environ.get('EMAIL_USER', 'info@britishglobal.com.tr')
-EMAIL_PASSWORD = os.environ.get('EMAIL_PASSWORD', '#7U<gIbZ')
+EMAIL_PASSWORD = os.environ.get('EMAIL_PASSWORD', '1453Tr.,')
 
 # MAIL ADRESLERİ
 ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'info@britishglobal.com.tr')
@@ -623,48 +623,55 @@ def create_hubspot_note(contact_id, category, extracted_data):
 
 @app.route("/tally", methods=["POST"])
 def tally_webhook():
-    """Tally webhook endpoint - Güncellenmiş Tally format desteği ile"""
+    """Tally webhook endpoint - Error handling ile"""
     try:
         # Gelen veriyi al
         data = request.json
         
         print("=" * 60)
         print(f"YENİ WEBHOOK - {datetime.now()}")
-        print("Ham Tally verisi:")
-        print(json.dumps(data, indent=2, ensure_ascii=False))
         
         # Form verilerini çıkar
         extracted = extract_form_data(data)
-        print("\nÇıkarılan form verileri:")
-        print(json.dumps(extracted, indent=2, ensure_ascii=False))
+        print(f"\nÇıkarılan veriler: {extracted}")
         
         # Kategori belirle
         category = determine_category(extracted)
-        print(f"\nBelirlenen kategori: {category}")
+        print(f"\nKategori: {category}")
         
         # İletişim bilgilerini al
         contact = get_contact_info(extracted)
-        print(f"\nİletişim bilgileri: {contact}")
+        print(f"\nKişi: {contact}")
         
         # Email kontrolü
-        if not contact['email']:
+        if not contact.get('email'):
             print("❌ EMAIL BULUNAMADI!")
-            return jsonify({"error": "Email adresi bulunamadı"}), 400
+            return "NO EMAIL", 400
         
         # HubSpot'a kaydet
+        print("📤 HubSpot'a kaydediliyor...")
         hubspot_result = save_to_hubspot(contact, category, extracted)
+        print(f"HubSpot sonuç: {hubspot_result.get('success', False)}")
         
-        # Email bildirim gönder
-        email_result = send_notification_email(contact, category, extracted)
+        # Email gönder (hata olsa bile devam et)
+        try:
+            print("📧 Email gönderiliyor...")
+            email_result = send_notification_email(contact, category, extracted)
+            print(f"Email sonuç: {email_result.get('success', False)}")
+        except Exception as email_error:
+            print(f"⚠️ Email hatası (devam ediliyor): {str(email_error)}")
         
+        print("✅ Webhook tamamlandı")
         print("=" * 60)
         
-        # Başarılı response - Tally için en basit format
+        # En basit başarılı response
         return "OK", 200
         
     except Exception as e:
-        print(f"❌ HATA: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        print(f"❌ WEBHOOK HATASI: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return f"ERROR: {str(e)}", 500
 
 @app.route("/", methods=["GET"])
 def health_check():
@@ -679,7 +686,16 @@ def health_check():
         "timestamp": datetime.now().isoformat()
     })
 
-@app.route("/test", methods=["POST"])
+@app.route("/simple-test", methods=["POST"])
+def simple_test():
+    """Çok basit test endpoint"""
+    try:
+        data = request.json
+        print(f"✅ Simple test received: {data}")
+        return "SUCCESS", 200
+    except Exception as e:
+        print(f"❌ Simple test error: {str(e)}")
+        return "ERROR", 500
 def test_endpoint():
     """Test için endpoint - Error handling ile"""
     data = request.json
