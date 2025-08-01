@@ -639,8 +639,8 @@ def create_hubspot_note(contact_id, category, extracted_data):
     
     note_payload = {
         "properties": {
-            "hs_note_body": note_body,
-            "hs_timestamp": datetime.now().isoformat()
+            "hs_note_body": note_body
+            # hs_timestamp kaldırıldı - HubSpot otomatik ekleyecek
         },
         "associations": [
             {
@@ -711,6 +711,7 @@ def tally_webhook():
             print(f"🔑 Password length: {len(EMAIL_PASSWORD)} karakter")
             print(f"🔑 Password format check: {EMAIL_PASSWORD.replace(' ', '').isalnum()}")
             
+            # DÜZELTME: Fonksiyon ismini değiştirdim ama çağırdığım yerde değiştirmemişim
             email_result = send_notification_email(contact, category, extracted)
             print(f"Email sonuç: {email_result}")
         except Exception as email_error:
