@@ -234,10 +234,14 @@ def send_notification_email(contact_info, category, extracted_data):
         # Mail içeriği oluştur
         subject, body, recipients = create_email_content(contact_info, category, extracted_data)
         
-        # SMTP bağlantısı
+        # SMTP bağlantısı - Gmail için özel ayarlar
         server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.ehlo()  # Gmail için gerekli
         server.starttls()
+        server.ehlo()  # TLS sonrası tekrar gerekli
         server.login(EMAIL_USER, EMAIL_PASSWORD)
+        
+        print(f"✅ SMTP bağlantısı başarılı: {EMAIL_USER}")
         
         # Her alıcıya mail gönder
         results = []
@@ -259,6 +263,10 @@ def send_notification_email(contact_info, category, extracted_data):
         server.quit()
         return {"success": True, "results": results}
         
+    except smtplib.SMTPAuthenticationError as e:
+        print(f"❌ SMTP Authentication hatası: {str(e)}")
+        print(f"🔍 Kullanılan: {EMAIL_USER} / {EMAIL_PASSWORD[:4]}...")
+        return {"success": False, "error": f"Authentication failed: {str(e)}"}
     except Exception as e:
         print(f"❌ Email hatası: {str(e)}")
         return {"success": False, "error": str(e)}
@@ -656,10 +664,15 @@ def tally_webhook():
         # Email gönder (hata olsa bile devam et)
         try:
             print("📧 Email gönderiliyor...")
+            print(f"🔧 SMTP Ayarları: {SMTP_SERVER}:{SMTP_PORT}")
+            print(f"👤 User: {EMAIL_USER}")
+            print(f"🔑 Password: {EMAIL_PASSWORD[:4]}...")
             email_result = send_notification_email(contact, category, extracted)
-            print(f"Email sonuç: {email_result.get('success', False)}")
+            print(f"Email sonuç: {email_result}")
         except Exception as email_error:
             print(f"⚠️ Email hatası (devam ediliyor): {str(email_error)}")
+            import traceback
+            traceback.print_exc()
         
         print("✅ Webhook tamamlandı")
         print("=" * 60)
