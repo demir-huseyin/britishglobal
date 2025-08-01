@@ -223,7 +223,69 @@ def get_legal_details(extracted_data):
         'legal_topic': extracted_data.get('hukuk_konu', '')
     }
 
-def send_notification_email_sendgrid(contact_info, category, extracted_data):
+# Email cache - duplicate önleme için
+sent_emails = set()
+
+def send_notification_email(contact_info, category, extracted_data):
+    """Kategori bazlı bildirim maili gönder - Duplicate önleme ile"""
+    
+    if not EMAIL_USER or not EMAIL_PASSWORD:
+        print("⚠️ Email ayarları bulunamadı")
+        return {"success": False, "error": "Email ayarları bulunamadı"}
+    
+    # Duplicate kontrolü - submission ID ile
+    submission_id = extracted_data.get('submission_id', '')
+    email_key = f"{submission_id}_{category}_{contact_info.get('email', '')}"
+    
+    if email_key in sent_emails:
+        print(f"⚠️ Email zaten gönderildi: {email_key}")
+        return {"success": True, "message": "Email already sent (duplicate prevention)"}
+    
+    try:
+        # Mail içeriği oluştur
+        subject, body, recipients = create_email_content(contact_info, category, extracted_data)
+        
+        # SMTP bağlantısı - Gmail için özel ayarlar
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.ehlo()  # Gmail için gerekli
+        server.starttls()
+        server.ehlo()  # TLS sonrası tekrar gerekli
+        server.login(EMAIL_USER, EMAIL_PASSWORD)
+        
+        print(f"✅ SMTP bağlantısı başarılı: {EMAIL_USER}")
+        
+        # Her alıcıya mail gönder
+        results = []
+        for recipient in recipients:
+            msg = MIMEMultipart()
+            msg['From'] = EMAIL_USER
+            msg['To'] = recipient
+            msg['Subject'] = subject
+            msg.attach(MIMEText(body, 'html', 'utf-8'))
+            
+            try:
+                server.send_message(msg)
+                results.append({"recipient": recipient, "status": "success"})
+                print(f"✅ Mail gönderildi: {recipient}")
+            except Exception as e:
+                results.append({"recipient": recipient, "status": "failed", "error": str(e)})
+                print(f"❌ Mail gönderilemedi {recipient}: {str(e)}")
+        
+        server.quit()
+        
+        # Email gönderildi olarak işaretle
+        sent_emails.add(email_key)
+        print(f"📝 Email cache'e eklendi: {email_key}")
+        
+        return {"success": True, "results": results}
+        
+    except smtplib.SMTPAuthenticationError as e:
+        print(f"❌ SMTP Authentication hatası: {str(e)}")
+        print(f"🔍 Kullanılan: {EMAIL_USER} / {EMAIL_PASSWORD[:4]}...")
+        return {"success": False, "error": f"Authentication failed: {str(e)}"}
+    except Exception as e:
+        print(f"❌ Email hatası: {str(e)}")
+        return {"success": False, "error": str(e)}
     """SendGrid ile email gönder (Gmail alternatifi)"""
     
     SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY', '')
