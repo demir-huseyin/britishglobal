@@ -699,7 +699,41 @@ def health_check():
         "timestamp": datetime.now().isoformat()
     })
 
-@app.route("/simple-test", methods=["POST"])
+@app.route("/email-test", methods=["GET"])
+def email_test():
+    """Email ayarlarını test et"""
+    try:
+        import smtplib
+        from email.mime.text import MIMEText
+        
+        # Test email gönder
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.ehlo()
+        server.starttls()
+        server.ehlo()
+        server.login(EMAIL_USER, EMAIL_PASSWORD)
+        
+        msg = MIMEText("Test email from British Global webhook!", 'plain', 'utf-8')
+        msg['From'] = EMAIL_USER
+        msg['To'] = EMAIL_USER  # Kendimize gönder
+        msg['Subject'] = "🧪 British Global Email Test"
+        
+        server.send_message(msg)
+        server.quit()
+        
+        return jsonify({
+            "status": "SUCCESS",
+            "message": "Test email sent successfully!",
+            "smtp": f"{EMAIL_USER} via smtp.gmail.com:587"
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "status": "FAILED", 
+            "error": str(e),
+            "smtp_user": EMAIL_USER,
+            "smtp_server": "smtp.gmail.com:587"
+        }), 500
 def simple_test():
     """Çok basit test endpoint"""
     try:
