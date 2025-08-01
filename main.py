@@ -376,7 +376,7 @@ def send_notification_email(contact_info, category, extracted_data):
         return {"success": False, "error": str(e)}
 
 def create_email_content(contact_info, category, extracted_data):
-    """Mail içeriği ve alıcıları oluştur"""
+    """Mail içeriği ve alıcıları oluştur - Modern minimal template"""
     
     # Alıcıları belirle - Kategori bazlı
     recipients = [ADMIN_EMAIL]  # Admin her zaman alır
@@ -394,128 +394,283 @@ def create_email_content(contact_info, category, extracted_data):
         'business': 'Ticari'
     }
     
-    subject = f"🔔 Yeni {category_tr.get(category, 'Genel')} Başvurusu - {contact_info['firstname']} {contact_info['lastname']}"
+    subject = f"Yeni {category_tr.get(category, 'Genel')} Başvurusu - {contact_info['firstname']} {contact_info['lastname']}"
     
-    # HTML Body oluştur
+    # Modern HTML Body
     body = f"""
+    <!DOCTYPE html>
     <html>
     <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
-            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-            .header {{ background-color: #2c3e50; color: white; padding: 20px; text-align: center; }}
-            .content {{ padding: 20px; }}
-            .info-box {{ background-color: #f8f9fa; border-left: 4px solid #007bff; padding: 15px; margin: 15px 0; }}
-            .category-education {{ border-left-color: #28a745; }}
-            .category-legal {{ border-left-color: #dc3545; }}
-            .category-business {{ border-left-color: #ffc107; }}
-            table {{ width: 100%; border-collapse: collapse; margin: 15px 0; }}
-            th, td {{ padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }}
-            th {{ background-color: #f2f2f2; font-weight: bold; }}
-            .footer {{ background-color: #f8f9fa; padding: 15px; text-align: center; font-size: 12px; color: #666; }}
+            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+            body {{ 
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                line-height: 1.6; 
+                color: #2c3e50;
+                background-color: #f8fafc;
+            }}
+            .container {{ 
+                max-width: 600px; 
+                margin: 0 auto; 
+                background: white;
+                border-radius: 12px;
+                overflow: hidden;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            }}
+            .header {{ 
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white; 
+                padding: 40px 30px;
+                text-align: center;
+                position: relative;
+            }}
+            .header::before {{
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="2" fill="rgba(255,255,255,0.1)"/><circle cx="80" cy="40" r="3" fill="rgba(255,255,255,0.1)"/><circle cx="40" cy="80" r="1" fill="rgba(255,255,255,0.1)"/></svg>');
+                opacity: 0.3;
+            }}
+            .header h1 {{ 
+                font-size: 28px; 
+                font-weight: 700;
+                margin-bottom: 8px;
+                position: relative;
+                z-index: 1;
+            }}
+            .header p {{ 
+                font-size: 16px; 
+                opacity: 0.9;
+                position: relative;
+                z-index: 1;
+            }}
+            .content {{ 
+                padding: 40px 30px;
+            }}
+            .info-card {{
+                background: #f8fafc;
+                border-radius: 8px;
+                padding: 24px;
+                margin: 24px 0;
+                border-left: 4px solid #667eea;
+            }}
+            .category-education {{ border-left-color: #10b981; }}
+            .category-legal {{ border-left-color: #ef4444; }}
+            .category-business {{ border-left-color: #f59e0b; }}
+            .info-grid {{ 
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 16px;
+                margin: 20px 0;
+            }}
+            .info-item {{ 
+                background: white;
+                padding: 16px;
+                border-radius: 6px;
+                border: 1px solid #e2e8f0;
+            }}
+            .info-label {{ 
+                font-size: 12px;
+                color: #64748b;
+                text-transform: uppercase;
+                font-weight: 600;
+                margin-bottom: 4px;
+            }}
+            .info-value {{ 
+                font-size: 16px;
+                color: #1e293b;
+                font-weight: 500;
+            }}
+            .programs-list {{
+                background: white;
+                border-radius: 6px;
+                padding: 16px;
+                margin: 16px 0;
+            }}
+            .program-item {{
+                display: flex;
+                align-items: center;
+                padding: 8px 0;
+                border-bottom: 1px solid #f1f5f9;
+            }}
+            .program-item:last-child {{ border-bottom: none; }}
+            .program-icon {{ 
+                width: 24px;
+                height: 24px;
+                background: #667eea;
+                border-radius: 4px;
+                margin-right: 12px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-size: 12px;
+            }}
+            .footer {{ 
+                background: #1e293b;
+                color: #94a3b8;
+                padding: 30px;
+                text-align: center;
+            }}
+            .footer h3 {{
+                color: white;
+                margin-bottom: 8px;
+                font-size: 18px;
+            }}
+            .footer p {{
+                font-size: 14px;
+                margin: 4px 0;
+            }}
+            .cta-button {{
+                display: inline-block;
+                background: #667eea;
+                color: white;
+                padding: 12px 24px;
+                border-radius: 6px;
+                text-decoration: none;
+                font-weight: 600;
+                margin: 20px 0;
+            }}
+            @media (max-width: 600px) {{
+                .info-grid {{ grid-template-columns: 1fr; }}
+                .header {{ padding: 30px 20px; }}
+                .content {{ padding: 30px 20px; }}
+            }}
         </style>
     </head>
     <body>
-        <div class="header">
-            <h1>🎯 British Global - Yeni Başvuru</h1>
-            <p>{category_tr.get(category, 'Genel')} Danışmanlık Talebi</p>
-        </div>
-        
-        <div class="content">
-            <div class="info-box category-{category}">
-                <h2>📋 Başvuru Bilgileri</h2>
-                <p><strong>Kategori:</strong> {category_tr.get(category, 'Genel')} Danışmanlık</p>
-                <p><strong>Tarih:</strong> {datetime.now().strftime('%d/%m/%Y %H:%M')}</p>
-                <p><strong>Submission ID:</strong> {extracted_data.get('submission_id', 'N/A')}</p>
+        <div class="container">
+            <div class="header">
+                <h1>British Global</h1>
+                <p>{category_tr.get(category, 'Genel')} Danışmanlık Başvurusu</p>
             </div>
             
-            <h2>👤 İletişim Bilgileri</h2>
-            <table>
-                <tr><th>Ad Soyad</th><td>{contact_info['firstname']} {contact_info['lastname']}</td></tr>
-                <tr><th>Email</th><td><a href="mailto:{contact_info['email']}">{contact_info['email']}</a></td></tr>
-                <tr><th>Telefon</th><td><a href="tel:{contact_info['phone']}">{contact_info['phone']}</a></td></tr>
-            </table>
+            <div class="content">
+                <div class="info-card category-{category}">
+                    <h2 style="margin-bottom: 12px; color: #1e293b;">📋 Yeni Başvuru</h2>
+                    <p style="color: #64748b;">📅 {datetime.now().strftime('%d %B %Y, %H:%M')}</p>
+                </div>
+                
+                <h3 style="margin: 24px 0 16px 0; color: #1e293b;">İletişim Bilgileri</h3>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">Ad Soyad</div>
+                        <div class="info-value">{contact_info['firstname']} {contact_info['lastname']}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Email</div>
+                        <div class="info-value"><a href="mailto:{contact_info['email']}" style="color: #667eea; text-decoration: none;">{contact_info['email']}</a></div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Telefon</div>
+                        <div class="info-value"><a href="tel:{contact_info['phone']}" style="color: #667eea; text-decoration: none;">{contact_info['phone']}</a></div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Kategori</div>
+                        <div class="info-value">{category_tr.get(category, 'Genel')} Danışmanlık</div>
+                    </div>
+                </div>
     """
     
     # Kategori özel bilgileri ekle
     if category == 'education':
         education_details = get_education_details(extracted_data)
         body += f"""
-            <h2>🎓 Eğitim Detayları</h2>
-            <table>
-                <tr><th>İlgilenilen Program</th><td>{education_details['education_programs'] or 'Belirtilmemiş'}</td></tr>
-                <tr><th>Not Ortalaması</th><td>{education_details['gpa'] or 'Belirtilmemiş'}</td></tr>
-                <tr><th>Bütçe</th><td>£{education_details['budget']:,} </td></tr>
-            </table>
+                <h3 style="margin: 32px 0 16px 0; color: #1e293b;">Eğitim Detayları</h3>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">Not Ortalaması</div>
+                        <div class="info-value">{education_details['gpa'] or 'Belirtilmemiş'}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Bütçe</div>
+                        <div class="info-value">£{education_details['budget']:,} </div>
+                    </div>
+                </div>
         """
         
-        # Detaylı program bilgisi
+        # Program listesi
         programs = []
-        if extracted_data.get('doktora'): programs.append('🎯 Doktora (PhD)')
-        if extracted_data.get('master'): programs.append('🎓 Yüksek Lisans (Master)')
-        if extracted_data.get('lisans'): programs.append('📚 Lisans')
-        if extracted_data.get('lise'): programs.append('🏫 Lise')
-        if extracted_data.get('dil_okulu'): programs.append('🗣️ Dil Okulu')
-        if extracted_data.get('yaz_kampi'): programs.append('🏕️ Yaz Kampı')
+        if extracted_data.get('doktora'): programs.append(('🎓', 'Doktora (PhD)'))
+        if extracted_data.get('master'): programs.append(('📚', 'Yüksek Lisans (Master)'))
+        if extracted_data.get('lisans'): programs.append(('🏫', 'Lisans'))
+        if extracted_data.get('lise'): programs.append(('📖', 'Lise'))
+        if extracted_data.get('dil_okulu'): programs.append(('🗣️', 'Dil Okulu'))
+        if extracted_data.get('yaz_kampi'): programs.append(('🏕️', 'Yaz Kampı'))
         
         if programs:
             body += f"""
-                <div class="info-box">
-                    <h3>Seçilen Programlar:</h3>
-                    <ul>{''.join(f'<li>{p}</li>' for p in programs)}</ul>
+                <div class="programs-list">
+                    <h4 style="margin-bottom: 12px; color: #1e293b;">İlgilenilen Programlar</h4>
+                    {''.join(f'<div class="program-item"><div class="program-icon">{icon}</div><span>{name}</span></div>' for icon, name in programs)}
                 </div>
             """
     
     elif category == 'legal':
         legal_details = get_legal_details(extracted_data)
         body += f"""
-            <h2>⚖️ Hukuk Detayları</h2>
-            <table>
-                <tr><th>Hukuki Hizmetler</th><td>{legal_details['legal_services'] or 'Belirtilmemiş'}</td></tr>
-                <tr><th>Açıklama</th><td>{legal_details['legal_topic'] or 'Belirtilmemiş'}</td></tr>
-            </table>
+                <h3 style="margin: 32px 0 16px 0; color: #1e293b;">Hukuki Hizmetler</h3>
+                <div class="info-card">
+                    <p style="color: #64748b; margin-bottom: 8px;">İhtiyaç duyulan hizmetler:</p>
+                    <p style="color: #1e293b; font-weight: 500;">{legal_details['legal_services'] or 'Belirtilmemiş'}</p>
+                </div>
         """
         
-        # Detaylı hizmet listesi
+        # Hizmet listesi
         services = []
-        if extracted_data.get('turistik_vize'): services.append('🧳 Turistik Vize')
-        if extracted_data.get('ogrenci_vize'): services.append('🎓 Öğrenci Vizesi')
-        if extracted_data.get('calisma_vize'): services.append('💼 Çalışma Vizesi')
-        if extracted_data.get('aile_vize'): services.append('👨‍👩‍👧‍👦 Aile Birleşimi')
-        if extracted_data.get('ilr'): services.append('🏠 Süresiz Oturum (ILR)')
-        if extracted_data.get('vatandaslik'): services.append('🇬🇧 Vatandaşlık')
-        if extracted_data.get('vize_red'): services.append('❌ Vize Red İtiraz')
+        if extracted_data.get('turistik_vize'): services.append(('✈️', 'Turistik Vize'))
+        if extracted_data.get('ogrenci_vize'): services.append(('🎓', 'Öğrenci Vizesi'))
+        if extracted_data.get('calisma_vize'): services.append(('💼', 'Çalışma Vizesi'))
+        if extracted_data.get('aile_vize'): services.append(('👨‍👩‍👧‍👦', 'Aile Birleşimi'))
+        if extracted_data.get('ilr'): services.append(('🏠', 'Süresiz Oturum'))
+        if extracted_data.get('vatandaslik'): services.append(('🇬🇧', 'Vatandaşlık'))
+        if extracted_data.get('vize_red'): services.append(('⚖️', 'Vize Red İtiraz'))
         
         if services:
             body += f"""
-                <div class="info-box">
-                    <h3>İhtiyaç Duyulan Hizmetler:</h3>
-                    <ul>{''.join(f'<li>{s}</li>' for s in services)}</ul>
+                <div class="programs-list">
+                    <h4 style="margin-bottom: 12px; color: #1e293b;">Seçilen Hizmetler</h4>
+                    {''.join(f'<div class="program-item"><div class="program-icon">{icon}</div><span>{name}</span></div>' for icon, name in services)}
                 </div>
             """
     
     elif category == 'business':
         business_details = get_business_details(extracted_data)
         body += f"""
-            <h2>💼 Ticari Detaylar</h2>
-            <table>
-                <tr><th>Şirket Adı</th><td>{business_details['company_name'] or 'Belirtilmemiş'}</td></tr>
-                <tr><th>Sektör</th><td>{business_details['sector'] or 'Belirtilmemiş'}</td></tr>
-                <tr><th>Sektör Detayları</th><td>{business_details['sector_details'] or 'Belirtilmemiş'}</td></tr>
-            </table>
+                <h3 style="margin: 32px 0 16px 0; color: #1e293b;">Şirket Bilgileri</h3>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">Şirket Adı</div>
+                        <div class="info-value">{business_details['company_name'] or 'Belirtilmemiş'}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Sektör</div>
+                        <div class="info-value">{business_details['sector_details'] or 'Belirtilmemiş'}</div>
+                    </div>
+                </div>
         """
     
     # Footer ekle
     body += f"""
-            <div class="info-box">
-                <h3>🚀 Sonraki Adımlar</h3>
-                <p>Bu başvuru HubSpot sistemine kaydedildi. Müşteriyi 24 saat içinde aramayı unutmayın!</p>
-                <p><strong>HubSpot Contact ID:</strong> Yakında eklenecek</p>
+                <div style="margin-top: 40px; padding-top: 24px; border-top: 1px solid #e2e8f0;">
+                    <p style="color: #64748b; font-size: 14px; text-align: center;">
+                        Bu müşteriyi 24 saat içinde aramayı unutmayın!
+                    </p>
+                </div>
             </div>
-        </div>
-        
-        <div class="footer">
-            <p>Bu mail British Global webhook sistemi tarafından otomatik oluşturulmuştur.</p>
-            <p>📧 {', '.join(recipients)} adreslerine gönderildi</p>
+            
+            <div class="footer">
+                <h3>British Global</h3>
+                <p>İngiltere Danışmanlık Hizmetleri | Eğitim, Yatırım ve Hukuk</p>
+                <p style="margin-top: 16px; font-size: 12px;">
+                    Bu mail British Global webhook sistemi tarafından otomatik oluşturulmuştur.
+                </p>
+            </div>
         </div>
     </body>
     </html>
