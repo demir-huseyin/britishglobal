@@ -1,0 +1,20 @@
+steps:
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'britishglobal-webhook'
+      - '--source'
+      - '.'
+      - '--region=europe-west2'  # Bu satır önemli!
+      - '--allow-unauthenticated'
+      - '--port=8080'
+      - '--memory=1Gi'
+      - '--timeout=300'
+      - '--max-instances=10'
+      - '--min-instances=0'
+      - '--cpu=1'
+      - '--concurrency=10'
+timeout: 1200s
+options:
+  logging: CLOUD_LOGGING_ONLY
