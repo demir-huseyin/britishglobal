@@ -1,7 +1,6 @@
 import logging
 from typing import Dict, List
 from .base_email import BaseEmailService
-from config.settings import Config
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -9,12 +8,30 @@ logger = logging.getLogger(__name__)
 class LegalEmailService(BaseEmailService):
     """Hukuk danışmanlığı email servisi"""
     
+    def __init__(self, email_config: Dict):
+        super().__init__(email_config)
+        
+        # Config import'u güvenli hale getir
+        try:
+            from config.settings import Config
+            self.config_class = Config
+        except ImportError:
+            logger.warning("Config import failed, using fallback")
+            self.config_class = None
+    
     def get_recipients(self, contact_info: Dict) -> List[str]:
         """Hukuk kategorisi alıcıları"""
-        recipients = [Config.ADMIN_EMAIL]
+        recipients = []
         
-        if Config.LEGAL_PARTNER_EMAIL:
-            recipients.append(Config.LEGAL_PARTNER_EMAIL)
+        if self.config_class:
+            if self.config_class.ADMIN_EMAIL:
+                recipients.append(self.config_class.ADMIN_EMAIL)
+            if self.config_class.LEGAL_PARTNER_EMAIL:
+                recipients.append(self.config_class.LEGAL_PARTNER_EMAIL)
+        
+        # Fallback
+        if not recipients:
+            recipients = ['info@britishglobal.com.tr']
             
         return recipients
     
@@ -162,13 +179,13 @@ class LegalEmailService(BaseEmailService):
             content_sections.append(service_list)
         
         # Partner özel notlar
-        if Config.LEGAL_PARTNER_EMAIL:
+        if self.config_class and self.config_class.LEGAL_PARTNER_EMAIL:
             partner_note = f"""
             <div class="info-card" style="background: #fef2f2; border-left-color: #ef4444;">
                 <h4 style="color: #dc2626; margin-bottom: 8px;">🤝 Hukuk Partneri Koordinasyonu</h4>
                 <p style="color: #dc2626;">
                     Bu başvuru hukuk partnerimize de gönderilmiştir: 
-                    <strong>{Config.LEGAL_PARTNER_EMAIL}</strong>
+                    <strong>{self.config_class.LEGAL_PARTNER_EMAIL}</strong>
                 </p>
                 <p style="color: #dc2626; font-size: 14px; margin-top: 8px;">
                     Vize başvuru süreçleri için partnerimizle koordineli çalışın.
@@ -326,7 +343,13 @@ class LegalEmailService(BaseEmailService):
         """
         
         # Sadece admin'e acil uyarı gönder
-        return self.send_email([Config.ADMIN_EMAIL], subject, body)
+        recipients = []
+        if self.config_class and self.config_class.ADMIN_EMAIL:
+            recipients.append(self.config_class.ADMIN_EMAIL)
+        else:
+            recipients = ['info@britishglobal.com.tr']
+            
+        return self.send_email(recipients, subject, body)
     
     def send_deadline_reminder(self, contact_info: Dict, service_type: str, days_remaining: int) -> Dict:
         """Vize başvuru deadline hatırlatması"""
@@ -349,8 +372,14 @@ class LegalEmailService(BaseEmailService):
         </div>
         """
         
-        recipients = [Config.ADMIN_EMAIL]
-        if Config.LEGAL_PARTNER_EMAIL:
-            recipients.append(Config.LEGAL_PARTNER_EMAIL)
+        recipients = []
+        if self.config_class:
+            if self.config_class.ADMIN_EMAIL:
+                recipients.append(self.config_class.ADMIN_EMAIL)
+            if self.config_class.LEGAL_PARTNER_EMAIL:
+                recipients.append(self.config_class.LEGAL_PARTNER_EMAIL)
+        
+        if not recipients:
+            recipients = ['info@britishglobal.com.tr']
             
         return self.send_email(recipients, subject, body)

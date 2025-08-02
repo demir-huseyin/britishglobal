@@ -1,19 +1,37 @@
 import logging
 from typing import Dict, List
 from .base_email import BaseEmailService
-from config.settings import Config
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
 class EducationEmailService(BaseEmailService):
     """Eğitim danışmanlığı email servisi"""
     
+    def __init__(self, email_config: Dict):
+        super().__init__(email_config)
+        
+        # Config import'u güvenli hale getir
+        try:
+            from config.settings import Config
+            self.config_class = Config
+        except ImportError:
+            logger.warning("Config import failed, using fallback")
+            self.config_class = None
+    
     def get_recipients(self, contact_info: Dict) -> List[str]:
         """Eğitim kategorisi alıcıları"""
-        recipients = [Config.ADMIN_EMAIL]
+        recipients = []
         
-        if Config.EDUCATION_PARTNER_EMAIL:
-            recipients.append(Config.EDUCATION_PARTNER_EMAIL)
+        if self.config_class:
+            if self.config_class.ADMIN_EMAIL:
+                recipients.append(self.config_class.ADMIN_EMAIL)
+            if self.config_class.EDUCATION_PARTNER_EMAIL:
+                recipients.append(self.config_class.EDUCATION_PARTNER_EMAIL)
+        
+        # Fallback
+        if not recipients:
+            recipients = ['info@britishglobal.com.tr']
             
         return recipients
     
@@ -102,13 +120,13 @@ class EducationEmailService(BaseEmailService):
             content_sections.append(program_list)
         
         # Partner özel notlar
-        if Config.EDUCATION_PARTNER_EMAIL:
+        if self.config_class and self.config_class.EDUCATION_PARTNER_EMAIL:
             partner_note = f"""
             <div class="info-card" style="background: #fef3c7; border-left-color: #f59e0b;">
                 <h4 style="color: #92400e; margin-bottom: 8px;">📢 Eğitim Partneri Notu</h4>
                 <p style="color: #92400e;">
                     Bu başvuru eğitim partnerimize de gönderilmiştir: 
-                    <strong>{Config.EDUCATION_PARTNER_EMAIL}</strong>
+                    <strong>{self.config_class.EDUCATION_PARTNER_EMAIL}</strong>
                 </p>
                 <p style="color: #92400e; font-size: 14px; margin-top: 8px;">
                     Koordinasyon için lütfen partnerimizle iletişime geçin.
@@ -133,4 +151,79 @@ class EducationEmailService(BaseEmailService):
         # Email body oluştur
         body = self.create_base_template(contact_info, 'education', content_sections)
         
-        return subject,
+        return subject, body
+    
+    def send_application_confirmation(self, contact_info: Dict, extracted_data: Dict) -> Dict:
+        """Eğitim başvurusu onay maili"""
+        
+        education_data = extracted_data.get('education', {})
+        programs_text = education_data.get('programs_text', 'seçtiğiniz programlar')
+        
+        subject = "✅ Eğitim Danışmanlığı Başvurunuz Alındı - British Global"
+        
+        body = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <style>
+                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                .container {{ max-width: 600px; margin: 0 auto; background: white; }}
+                .header {{ background: #10b981; color: white; padding: 30px; text-align: center; }}
+                .content {{ padding: 30px; }}
+                .highlight {{ background: #f0fdf4; padding: 20px; border-radius: 8px; border-left: 4px solid #10b981; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>🎓 British Global</h1>
+                    <p>İngiltere Eğitim Danışmanlığı</p>
+                </div>
+                <div class="content">
+                    <h2>Sayın {contact_info.get('firstname', '')}!</h2>
+                    
+                    <p>İngiltere'de eğitim almak için yaptığınız başvurunuz alınmıştır.</p>
+                    
+                    <div class="highlight">
+                        <h3>📋 Başvuru Detaylarınız:</h3>
+                        <p><strong>İlgilenilen Programlar:</strong> {programs_text}</p>
+                        {f"<p><strong>Not Ortalaması:</strong> {education_data.get('gpa', '')}</p>" if education_data.get('gpa') else ""}
+                        {f"<p><strong>Bütçe:</strong> {education_data.get('budget_formatted', '')}</p>" if education_data.get('budget') else ""}
+                        <p><strong>Başvuru Tarihi:</strong> {datetime.now().strftime('%d %B %Y')}</p>
+                    </div>
+                    
+                    <h3>📞 Sonraki Adımlar:</h3>
+                    <ul>
+                        <li>Eğitim danışmanımız 24 saat içinde sizinle iletişime geçecektir</li>
+                        <li>Size en uygun üniversite ve programları önereceğiz</li>
+                        <li>Başvuru sürecinizi baştan sona takip edeceğiz</li>
+                        <li>Vize işlemlerinizde size yardımcı olacağız</li>
+                    </ul>
+                    
+                    <div style="background: #fef3c7; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                        <h4 style="color: #92400e;">📋 Hazırlamanız Gerekenler:</h4>
+                        <ul style="color: #92400e; margin-top: 10px;">
+                            <li>Transkript (not dökümleri)</li>
+                            <li>Diploma/mezuniyet belgesi</li>
+                            <li>İngilizce sınav sonuçları (IELTS/TOEFL)</li>
+                            <li>Pasaport fotokopisi</li>
+                        </ul>
+                        <p style="color: #92400e; margin-top: 12px; font-size: 14px;">
+                            Detaylı belge listesi danışmanımız tarafından size iletilecektir.
+                        </p>
+                    </div>
+                    
+                    <p style="margin-top: 30px;">
+                        Acil durumlar için bize <strong>info@britishglobal.com.tr</strong> 
+                        adresinden ulaşabilirsiniz.
+                    </p>
+                    
+                    <p>Saygılarımızla,<br><strong>British Global Eğitim Danışmanlığı Ekibi</strong></p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        return self.send_email([contact_info['email']], subject, body)
