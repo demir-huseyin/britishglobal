@@ -12,5 +12,8 @@ steps:
       - '--memory=1Gi'
       - '--timeout=300'
       - '--max-instances=10'
-
+      - '--min-instances=0'
+      - '--cpu=1'
+      - '--concurrency=10'
+      - '--set-env-vars=FLASK_ENV=production,PORT=8080'
 timeout: '900s'

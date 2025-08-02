@@ -25,6 +25,7 @@ USER app
 # Environment variables
 ENV FLASK_ENV=production
 ENV PORT=8080
+ENV PYTHONPATH=/app
 
 # Health check ekle
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
@@ -34,4 +35,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 EXPOSE 8080
 
 # Production server ile çalıştır
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "2", "--timeout", "300", "main:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "2", "--threads", "4", "--timeout", "300", "--keepalive", "2", "main:app"]
