@@ -4,9 +4,10 @@ FROM python:3.10-slim
 # Working directory oluştur
 WORKDIR /app
 
-# System dependencies (gerekirse)
+# System dependencies (curl health check için gerekli)
 RUN apt-get update && apt-get install -y \
     gcc \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Python dependencies önce kopyala (cache optimization)
@@ -21,6 +22,10 @@ RUN useradd --create-home --shell /bin/bash app \
     && chown -R app:app /app
 USER app
 
+# Environment variables
+ENV FLASK_ENV=production
+ENV PORT=8080
+
 # Health check ekle
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8080/ || exit 1
@@ -29,4 +34,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 EXPOSE 8080
 
 # Production server ile çalıştır
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "2", "--timeout", "30", "main:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "2", "--timeout", "300", "main:app"]
