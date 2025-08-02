@@ -6,7 +6,7 @@ steps:
       - 'britishglobal-webhook'
       - '--source'
       - '.'
-      - '--region=europe-west2'  # Bu satır önemli!
+      - '--region=europe-west2'
       - '--allow-unauthenticated'
       - '--port=8080'
       - '--memory=1Gi'
