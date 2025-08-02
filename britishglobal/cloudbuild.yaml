@@ -1,5 +1,4 @@
 steps:
-  # Build and deploy to Cloud Run
   - name: 'gcr.io/cloud-builders/gcloud'
     args:
       - 'run'
@@ -13,7 +12,5 @@ steps:
       - '--memory=1Gi'
       - '--timeout=300'
       - '--max-instances=10'
-      - '--min-instances=0'
 
-# Timeout for the entire build
 timeout: '900s'
