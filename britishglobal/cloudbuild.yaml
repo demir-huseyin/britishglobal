@@ -6,7 +6,7 @@ steps:
       - 'britishglobal-webhook'
       - '--source'
       - '.'
-      - '--region=europe-west2'
+      - '--region=europe-west2'  # Bu satır önemli!
       - '--allow-unauthenticated'
       - '--port=8080'
       - '--memory=1Gi'
@@ -15,5 +15,6 @@ steps:
       - '--min-instances=0'
       - '--cpu=1'
       - '--concurrency=10'
-      - '--set-env-vars=FLASK_ENV=production,PORT=8080'
-timeout: '900s'
+timeout: 1200s
+options:
+  logging: CLOUD_LOGGING_ONLY
