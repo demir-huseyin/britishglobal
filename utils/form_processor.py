@@ -17,6 +17,7 @@ class FormProcessor:
             'name_fields': ['Adınız Soyadınız', 'Full Name', 'Ad Soyad'],
             'email_fields': ['Mail Adresiniz', 'E-mail Adresiniz', 'Email Address'],
             'phone_fields': ['Telefon Numaranız', 'Phone Number', 'Telefon'],
+            'notes_fields': ['Not', 'Notlar', 'Ek Notlarınız', 'Additional Notes', 'Açıklama'],
             
             # Kategori belirleme
             'business_fields': ['Hangi Konuda Danışmanlık Almak İstiyorsunuz? (Ticari Danışmanlık)'],
@@ -64,6 +65,101 @@ class FormProcessor:
             }
         }
     
+    def _map_fields_to_structure(self, field_dict: Dict, data_section: Dict) -> Dict:
+        """Field'ları yapılandırılmış veri haline getir"""
+        
+        extracted = {
+            # Meta bilgiler
+            'submission_id': data_section.get('responseId', ''),
+            'submitted_at': data_section.get('createdAt', ''),
+            
+            # Temel bilgiler
+            'name': self._get_field_value(field_dict, self.field_mappings['name_fields']),
+            'email': self._get_field_value(field_dict, self.field_mappings['email_fields']),
+            'phone': self._get_field_value(field_dict, self.field_mappings['phone_fields']),
+            'notes': self._get_field_value(field_dict, self.field_mappings['notes_fields']),
+            
+            # Kategori boolean'ları
+            'ticari': self._get_boolean_field(field_dict, self.field_mappings['business_fields'][0]),
+            'egitim': self._get_boolean_field(field_dict, self.field_mappings['education_fields'][0]),
+            'hukuk': self._get_boolean_field(field_dict, self.field_mappings['legal_fields'][0]),
+            
+            # Eğitim detayları
+            'education': self._extract_education_data(field_dict),
+            
+            # Hukuk detayları
+            'legal': self._extract_legal_data(field_dict),
+            
+            # Business detayları
+            'business': self._extract_business_data(field_dict)
+        }
+        
+        return extracted
+    
+    def _extract_education_data(self, field_dict: Dict) -> Dict:
+        """Eğitim verilerini çıkar"""
+        
+        education_data = {
+            'gpa': self._get_field_value(field_dict, ['Not Ortalamanız', 'Your GPA']),
+            'budget': self._get_field_value(field_dict, [
+                'Eğitim ve Konaklama için Düşündüğünüz Bütçe Nedir? (£)',
+                'Budget for Education and Accommodation (£)'
+            ]),
+            'notes': self._get_field_value(field_dict, self.field_mappings['notes_fields']),
+            'levels': {},
+            'programs': []
+        }
+        
+        # Eğitim seviyelerini kontrol et
+        for level, field_name in self.field_mappings['education_levels'].items():
+            if self._get_boolean_field(field_dict, field_name):
+                education_data['levels'][level] = True
+                education_data['programs'].append(level)
+        
+        return education_data
+    
+    def _extract_legal_data(self, field_dict: Dict) -> Dict:
+        """Hukuk verilerini çıkar"""
+        
+        legal_data = {
+            'topic': self._get_field_value(field_dict, [
+                'Hangi konularda hukuki destek almak istiyorsunuz?',
+                'What legal services do you need?'
+            ]),
+            'notes': self._get_field_value(field_dict, self.field_mappings['notes_fields']),
+            'services': {},
+            'selected_services': []
+        }
+        
+        # Hukuk hizmetlerini kontrol et
+        for service, field_name in self.field_mappings['legal_services'].items():
+            if self._get_boolean_field(field_dict, field_name):
+                legal_data['services'][service] = True
+                legal_data['selected_services'].append(service)
+        
+        return legal_data
+    
+    def _extract_business_data(self, field_dict: Dict) -> Dict:
+        """Business verilerini çıkar"""
+        
+        business_data = {
+            'company_name': self._get_field_value(field_dict, ['Şirketinizin Adı', 'Company Name']),
+            'sector': self._get_field_value(field_dict, ['Sektörünüz', 'Your Industry']),
+            'notes': self._get_field_value(field_dict, self.field_mappings['notes_fields']),
+            'sectors': {},
+            'selected_sectors': []
+        }
+        
+        # Sektörleri kontrol et
+        for sector, field_name in self.field_mappings['business_sectors'].items():
+            if self._get_boolean_field(field_dict, field_name):
+                business_data['sectors'][sector] = True
+                business_data['selected_sectors'].append(sector)
+        
+        return business_data
+    
+    # ... (diğer methodlar aynı kalıyor)
+    
     def extract_form_data(self, tally_data: Dict) -> Dict:
         """Tally webhook verisinden form alanlarını çıkar"""
         
@@ -106,36 +202,6 @@ class FormProcessor:
             logger.error(f"Error extracting form data: {str(e)}")
             return {}
     
-    def _map_fields_to_structure(self, field_dict: Dict, data_section: Dict) -> Dict:
-        """Field'ları yapılandırılmış veri haline getir"""
-        
-        extracted = {
-            # Meta bilgiler
-            'submission_id': data_section.get('responseId', ''),
-            'submitted_at': data_section.get('createdAt', ''),
-            
-            # Temel bilgiler
-            'name': self._get_field_value(field_dict, self.field_mappings['name_fields']),
-            'email': self._get_field_value(field_dict, self.field_mappings['email_fields']),
-            'phone': self._get_field_value(field_dict, self.field_mappings['phone_fields']),
-            
-            # Kategori boolean'ları
-            'ticari': self._get_boolean_field(field_dict, self.field_mappings['business_fields'][0]),
-            'egitim': self._get_boolean_field(field_dict, self.field_mappings['education_fields'][0]),
-            'hukuk': self._get_boolean_field(field_dict, self.field_mappings['legal_fields'][0]),
-            
-            # Eğitim detayları
-            'education': self._extract_education_data(field_dict),
-            
-            # Hukuk detayları
-            'legal': self._extract_legal_data(field_dict),
-            
-            # Business detayları
-            'business': self._extract_business_data(field_dict)
-        }
-        
-        return extracted
-    
     def _get_field_value(self, field_dict: Dict, field_options: List[str]) -> str:
         """Birden fazla field option'dan değer al"""
         for field_name in field_options:
@@ -147,65 +213,6 @@ class FormProcessor:
         """Boolean field değeri al"""
         value = field_dict.get(field_name)
         return value is True or value == "true" or value == True
-    
-    def _extract_education_data(self, field_dict: Dict) -> Dict:
-        """Eğitim verilerini çıkar"""
-        
-        education_data = {
-            'gpa': self._get_field_value(field_dict, ['Not Ortalamanız', 'Your GPA']),
-            'budget': self._get_field_value(field_dict, [
-                'Eğitim ve Konaklama için Düşündüğünüz Bütçe Nedir? (£)',
-                'Budget for Education and Accommodation (£)'
-            ]),
-            'levels': {},
-            'programs': []
-        }
-        
-        # Eğitim seviyelerini kontrol et
-        for level, field_name in self.field_mappings['education_levels'].items():
-            if self._get_boolean_field(field_dict, field_name):
-                education_data['levels'][level] = True
-                education_data['programs'].append(level)
-        
-        return education_data
-    
-    def _extract_legal_data(self, field_dict: Dict) -> Dict:
-        """Hukuk verilerini çıkar"""
-        
-        legal_data = {
-            'topic': self._get_field_value(field_dict, [
-                'Hangi konularda hukuki destek almak istiyorsunuz?',
-                'What legal services do you need?'
-            ]),
-            'services': {},
-            'selected_services': []
-        }
-        
-        # Hukuk hizmetlerini kontrol et
-        for service, field_name in self.field_mappings['legal_services'].items():
-            if self._get_boolean_field(field_dict, field_name):
-                legal_data['services'][service] = True
-                legal_data['selected_services'].append(service)
-        
-        return legal_data
-    
-    def _extract_business_data(self, field_dict: Dict) -> Dict:
-        """Business verilerini çıkar"""
-        
-        business_data = {
-            'company_name': self._get_field_value(field_dict, ['Şirketinizin Adı', 'Company Name']),
-            'sector': self._get_field_value(field_dict, ['Sektörünüz', 'Your Industry']),
-            'sectors': {},
-            'selected_sectors': []
-        }
-        
-        # Sektörleri kontrol et
-        for sector, field_name in self.field_mappings['business_sectors'].items():
-            if self._get_boolean_field(field_dict, field_name):
-                business_data['sectors'][sector] = True
-                business_data['selected_sectors'].append(sector)
-        
-        return business_data
     
     def determine_category(self, extracted_data: Dict) -> str:
         """Form verilerine göre kategori belirle"""
@@ -313,6 +320,7 @@ class FormProcessor:
             'gpa': education_raw.get('gpa', ''),
             'budget': budget,
             'budget_formatted': budget_formatted,
+            'notes': education_raw.get('notes', ''),
             'priority_level': self._determine_education_priority(education_raw)
         }
     
@@ -338,6 +346,7 @@ class FormProcessor:
             'services': selected_services,
             'services_text': ', '.join(selected_services),
             'topic': legal_raw.get('topic', ''),
+            'notes': legal_raw.get('notes', ''),
             'urgency_level': self._determine_legal_urgency(legal_raw),
             'selected_services': legal_raw.get('selected_services', [])  # Original keys for logic
         }
@@ -373,6 +382,7 @@ class FormProcessor:
             'sector': business_raw.get('sector', ''),
             'sectors': selected_sectors,
             'sectors_text': ', '.join(selected_sectors),
+            'notes': business_raw.get('notes', ''),
             'requires_meeting': True,  # Her business başvurusu meeting gerektirir
             'business_type': self._determine_business_type(business_raw),
             'selected_sectors': business_raw.get('selected_sectors', [])  # Original keys for logic
@@ -464,6 +474,7 @@ class FormProcessor:
             'is_valid': validation['is_valid'],
             'has_errors': len(validation['errors']) > 0,
             'has_warnings': len(validation['warnings']) > 0,
+            'has_notes': bool(extracted_data.get('notes', '')),
             'timestamp': datetime.now().isoformat()
         }
         
@@ -474,6 +485,7 @@ class FormProcessor:
                 'programs_count': len(education_data.get('programs', [])),
                 'has_budget': bool(education_data.get('budget')),
                 'has_gpa': bool(education_data.get('gpa')),
+                'has_notes': bool(education_data.get('notes')),
                 'priority': education_data.get('priority_level', 'medium')
             }
         
@@ -482,6 +494,7 @@ class FormProcessor:
             summary['legal_summary'] = {
                 'services_count': len(legal_data.get('selected_services', [])),
                 'has_topic': bool(legal_data.get('topic')),
+                'has_notes': bool(legal_data.get('notes')),
                 'urgency': legal_data.get('urgency_level', 'medium')
             }
         
@@ -490,6 +503,7 @@ class FormProcessor:
             summary['business_summary'] = {
                 'has_company_name': bool(business_data.get('company_name')),
                 'sectors_count': len(business_data.get('selected_sectors', [])),
+                'has_notes': bool(business_data.get('notes')),
                 'business_type': business_data.get('business_type', 'general'),
                 'requires_meeting': True
             }
