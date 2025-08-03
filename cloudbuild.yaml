@@ -12,9 +12,4 @@ steps:
       - '--memory=1Gi'
       - '--timeout=300'
       - '--max-instances=10'
-      - '--min-instances=0'
-      - '--cpu=1'
-      - '--concurrency=10'
 timeout: 1200s
-options:
-  logging: CLOUD_LOGGING_ONLY

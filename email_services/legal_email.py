@@ -99,6 +99,36 @@ class LegalEmailService(BaseEmailService):
         """
         content_sections.append(legal_section)
         
+        # Notlar bölümü - Genel + Kategori özel
+        notes_section = ""
+        general_notes = extracted_data.get('notes', '')
+        legal_notes = legal_data.get('notes', '')
+        
+        if general_notes or legal_notes:
+            notes_section = f"""
+            <h3 style="margin: 24px 0 16px 0; color: #1e293b;">📝 Başvuru Notları</h3>
+            <div class="info-card" style="background: #fffbeb; border-left-color: #f59e0b;">
+            """
+            
+            if general_notes:
+                notes_section += f"""
+                <div style="margin-bottom: 16px;">
+                    <div class="label">Genel Notlar</div>
+                    <div class="value" style="color: #92400e; font-style: italic;">{general_notes}</div>
+                </div>
+                """
+            
+            if legal_notes:
+                notes_section += f"""
+                <div style="margin-bottom: 16px;">
+                    <div class="label">Hukuk Notları</div>
+                    <div class="value" style="color: #92400e; font-style: italic;">{legal_notes}</div>
+                </div>
+                """
+            
+            notes_section += "</div>"
+            content_sections.append(notes_section)
+        
         # Hizmet detay listesi
         if services:
             service_list = """
@@ -248,6 +278,23 @@ class LegalEmailService(BaseEmailService):
             </div>
             """
         
+        # Notes content için
+        notes_content = ""
+        general_notes = extracted_data.get('notes', '')
+        legal_notes = legal_data.get('notes', '')
+        
+        if general_notes or legal_notes:
+            notes_content = '<div class="highlight" style="background: #f0fdf4; padding: 15px; border-radius: 8px; margin: 15px 0;">'
+            notes_content += '<h4 style="color: #065f46; margin-bottom: 8px;">📝 Başvuru Notlarınız:</h4>'
+            
+            if general_notes:
+                notes_content += f'<p style="color: #065f46; font-style: italic;">• {general_notes}</p>'
+            
+            if legal_notes:
+                notes_content += f'<p style="color: #065f46; font-style: italic;">• {legal_notes}</p>'
+            
+            notes_content += '</div>'
+        
         body = f"""
         <!DOCTYPE html>
         <html>
@@ -280,6 +327,8 @@ class LegalEmailService(BaseEmailService):
                         {f"<p><strong>Ek Açıklama:</strong> {legal_data.get('topic', '')}</p>" if legal_data.get('topic') else ""}
                         <p><strong>Başvuru Tarihi:</strong> {datetime.now().strftime('%d %B %Y')}</p>
                     </div>
+                    
+                    {notes_content}
                     
                     <h3>📞 Sonraki Adımlar:</h3>
                     <ul>
