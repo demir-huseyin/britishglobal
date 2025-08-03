@@ -88,6 +88,11 @@ class HubSpotService:
             "hs_lead_status": "NEW"  # Standart HubSpot değeri
         }
         
+        # Notes field - tüm kategoriler için
+        notes = extracted_data.get('notes', '')
+        if notes:
+            properties["notes_last_contacted"] = notes[:500]  # HubSpot field limit
+        
         # Kategori özel properties
         if category == 'education':
             education_data = extracted_data.get('education', {})
@@ -285,6 +290,11 @@ class HubSpotService:
         note_body += f"📅 Başvuru: {datetime.now().strftime('%d/%m/%Y %H:%M')}\n"
         note_body += f"📋 Submission ID: {extracted_data.get('submission_id', 'N/A')}\n\n"
         
+        # Genel notlar - tüm kategoriler için
+        general_notes = extracted_data.get('notes', '')
+        if general_notes:
+            note_body += f"📝 Ek Notlar: {general_notes}\n\n"
+        
         if category == 'education':
             education_data = extracted_data.get('education', {})
             note_body += "🎓 EĞİTİM DANIŞMANLIĞI\n"
@@ -301,6 +311,11 @@ class HubSpotService:
             
             if education_data.get('budget'):
                 note_body += f"💰 Bütçe: £{education_data['budget']}\n"
+            
+            # Kategori özel notlar
+            edu_notes = education_data.get('notes', '')
+            if edu_notes:
+                note_body += f"📋 Eğitim Notları: {edu_notes}\n"
         
         elif category == 'legal':
             legal_data = extracted_data.get('legal', {})
@@ -315,6 +330,11 @@ class HubSpotService:
             
             if legal_data.get('topic'):
                 note_body += f"📝 Ek Açıklama: {legal_data['topic']}\n"
+            
+            # Kategori özel notlar
+            legal_notes = legal_data.get('notes', '')
+            if legal_notes:
+                note_body += f"⚖️ Hukuk Notları: {legal_notes}\n"
         
         elif category == 'business':
             business_data = extracted_data.get('business', {})
@@ -329,6 +349,11 @@ class HubSpotService:
                 for sector in business_data['selected_sectors']:
                     note_body += f"  • {sector}\n"
                 note_body += "\n"
+            
+            # Kategori özel notlar
+            business_notes = business_data.get('notes', '')
+            if business_notes:
+                note_body += f"💼 Ticari Notlar: {business_notes}\n"
         
         # Contact info ekle
         note_body += f"\n📧 Email: {extracted_data.get('email', '')}\n"
